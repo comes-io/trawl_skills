@@ -1,0 +1,39 @@
+{
+  "name": "@trawlme/skills",
+  "version": "0.1.0",
+  "description": "Claude Code skills for the Trawl CLI — teaches Claude how to manage scraps via @trawlme/cli",
+  "type": "module",
+  "bin": {
+    "trawlme-skills": "bin/install.js"
+  },
+  "files": [
+    "SKILL.md",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "install-skill": "node bin/install.js"
+  },
+  "keywords": [
+    "trawl",
+    "claude",
+    "claude-code",
+    "skill",
+    "scraping",
+    "cli"
+  ],
+  "author": "Pierre Brisorgueil",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/comes-io/trawl_skills.git"
+  },
+  "homepage": "https://trawl.me",
+  "bugs": {
+    "url": "https://github.com/comes-io/trawl_skills/issues"
+  }
+}

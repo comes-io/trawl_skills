@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.TRAWL_RELEASE || github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.TRAWL_RELEASE || github.token }}
+
+      - name: Publish to npm via OIDC
+        if: steps.semantic.outputs.new_release_published == 'true'
+        run: |
+          npm version ${{ steps.semantic.outputs.new_release_version }} --no-git-tag-version
+          npm publish --provenance --access public

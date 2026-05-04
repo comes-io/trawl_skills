@@ -1,17 +1,24 @@
 #!/usr/bin/env node
-import { mkdirSync, copyFileSync, existsSync, rmSync, readFileSync } from 'node:fs';
+import { mkdirSync, copyFileSync, existsSync, rmSync, readFileSync, readdirSync, statSync, cpSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = join(__dirname, '..');
-const SKILL_SOURCE = join(PACKAGE_ROOT, 'SKILL.md');
-const SKILL_NAME = 'trawl';
+const SKILLS_SOURCE = join(PACKAGE_ROOT, 'skills');
 
-function getDestination(scope) {
+function getSkillsBase(scope) {
   const base = scope === 'local' ? join(process.cwd(), '.claude') : join(homedir(), '.claude');
-  return join(base, 'skills', SKILL_NAME);
+  return join(base, 'skills');
+}
+
+function listSourceSkills() {
+  if (!existsSync(SKILLS_SOURCE)) return [];
+  return readdirSync(SKILLS_SOURCE).filter((name) => {
+    const dir = join(SKILLS_SOURCE, name);
+    return statSync(dir).isDirectory() && existsSync(join(dir, 'SKILL.md'));
+  });
 }
 
 function getVersion() {
@@ -19,54 +26,84 @@ function getVersion() {
   return pkg.version;
 }
 
-function install(scope) {
-  const dest = getDestination(scope);
+function installOne(name, scope) {
+  const src = join(SKILLS_SOURCE, name);
+  const dest = join(getSkillsBase(scope), name);
+  if (existsSync(dest)) rmSync(dest, { recursive: true, force: true });
   mkdirSync(dest, { recursive: true });
-  copyFileSync(SKILL_SOURCE, join(dest, 'SKILL.md'));
+  cpSync(src, dest, { recursive: true });
   return dest;
 }
 
-function uninstall(scope) {
-  const dest = getDestination(scope);
+function uninstallOne(name, scope) {
+  const dest = join(getSkillsBase(scope), name);
   if (!existsSync(dest)) return null;
   rmSync(dest, { recursive: true, force: true });
   return dest;
 }
 
+function pickSkills(arg) {
+  const all = listSourceSkills();
+  if (!arg || arg === 'all') return all;
+  if (!all.includes(arg)) {
+    console.error(`Unknown skill "${arg}". Available: ${all.join(', ')}`);
+    process.exit(1);
+  }
+  return [arg];
+}
+
 function printUsage() {
+  const all = listSourceSkills();
   console.log(`@trawlme/skills ${getVersion()}
 
 Usage:
-  trawlme-skills install [--local]      Install the Trawl skill into Claude Code
-  trawlme-skills uninstall [--local]    Remove the Trawl skill
-  trawlme-skills update [--local]       Reinstall (overwrites existing)
-  trawlme-skills version                Print version
-  trawlme-skills help                   Print this message
+  trawlme-skills install [<skill>] [--local]      Install one or all skills
+  trawlme-skills uninstall [<skill>] [--local]    Remove one or all skills
+  trawlme-skills update [<skill>] [--local]       Reinstall over existing
+  trawlme-skills list                             List bundled skills
+  trawlme-skills version                          Print version
+  trawlme-skills help                             Print this message
 
 Options:
-  --local    Install to ./.claude/skills/trawl/ (project-level) instead of ~/.claude/skills/trawl/
+  --local    Install to ./.claude/skills/ instead of ~/.claude/skills/
 
-Default scope is user-level (~/.claude/skills/).
+Available skills: ${all.join(', ') || '(none)'}
 `);
 }
 
-const [, , cmd, ...rest] = process.argv;
-const scope = rest.includes('--local') ? 'local' : 'user';
+const args = process.argv.slice(2);
+const cmd = args[0];
+const scope = args.includes('--local') ? 'local' : 'user';
+const positional = args.filter((a) => !a.startsWith('-') && a !== cmd);
+const skillArg = positional[0];
 
 switch (cmd) {
   case 'install':
   case 'update': {
-    const dest = install(scope);
-    console.log(`✓ Trawl skill installed at ${dest}`);
+    const skills = pickSkills(skillArg);
+    if (!skills.length) {
+      console.error('No skills found in package.');
+      process.exit(1);
+    }
+    for (const name of skills) {
+      const dest = installOne(name, scope);
+      console.log(`✓ Installed "${name}" at ${dest}`);
+    }
     console.log(`  Restart Claude Code if it was already running.`);
     break;
   }
   case 'uninstall': {
-    const dest = uninstall(scope);
-    if (dest) console.log(`✓ Trawl skill removed from ${dest}`);
-    else console.log(`  No Trawl skill found at ${getDestination(scope)}`);
+    const skills = pickSkills(skillArg);
+    for (const name of skills) {
+      const dest = uninstallOne(name, scope);
+      if (dest) console.log(`✓ Removed "${name}" from ${dest}`);
+      else console.log(`  No "${name}" found in ${getSkillsBase(scope)}`);
+    }
     break;
   }
+  case 'list':
+    for (const name of listSourceSkills()) console.log(name);
+    break;
   case 'version':
     console.log(getVersion());
     break;

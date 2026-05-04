@@ -5,6 +5,14 @@
 
 Claude Code skills for [Trawl](https://trawl.me). Teaches Claude how to manage scraps via `@trawlme/cli` — listing, creating, running, watching, debugging.
 
+Follows the [Anthropic Agent Skills](https://github.com/anthropics/skills) layout: each skill lives in `skills/<name>/SKILL.md`.
+
+## Bundled skills
+
+| Skill | What it does |
+|---|---|
+| `trawl` | Use the `trawl` CLI to manage scraps (auth, list, run, watch, debug) |
+
 ## Install
 
 ### Option 1 — via npx (no global install)
@@ -13,12 +21,18 @@ Claude Code skills for [Trawl](https://trawl.me). Teaches Claude how to manage s
 npx @trawlme/skills install
 ```
 
-This installs the skill into `~/.claude/skills/trawl/` (user-level, available across all projects).
+Installs all bundled skills into `~/.claude/skills/<name>/` (user-level, available across all projects).
 
 For project-level install:
 
 ```bash
 npx @trawlme/skills install --local
+```
+
+Install a specific skill only:
+
+```bash
+npx @trawlme/skills install trawl
 ```
 
 ### Option 2 — via the Trawl CLI
@@ -34,7 +48,7 @@ The CLI bundles the skills and keeps them in sync with the CLI version.
 
 ## Usage
 
-Once installed, restart Claude Code. The skill auto-triggers when you ask Claude about Trawl, scraps, scheduling jobs, or use the `trawl` CLI.
+Once installed, restart Claude Code. Skills auto-trigger when you ask Claude about Trawl, scraps, scheduling jobs, or use the `trawl` CLI.
 
 Example prompts:
 - "list my failed scraps from last week"
@@ -45,25 +59,26 @@ Example prompts:
 ## Commands
 
 ```
-trawlme-skills install [--local]      Install (default: user-level)
-trawlme-skills uninstall [--local]    Remove
-trawlme-skills update [--local]       Reinstall over existing
-trawlme-skills version                Print version
-trawlme-skills help                   Print usage
+trawlme-skills install [<skill>] [--local]      Install one or all skills
+trawlme-skills uninstall [<skill>] [--local]    Remove one or all skills
+trawlme-skills update [<skill>] [--local]       Reinstall over existing
+trawlme-skills list                             List bundled skills
+trawlme-skills version                          Print version
+trawlme-skills help                             Print usage
 ```
 
 ## Prerequisites
 
-The skill assumes `@trawlme/cli` is installed and the user is authenticated:
+The `trawl` skill assumes `@trawlme/cli` is installed and the user is authenticated:
 
 ```bash
 npm install -g @trawlme/cli
 trawl login
 ```
 
-## Editing the skill
+## Editing the skills
 
-The skill content lives in [`SKILL.md`](./SKILL.md). PRs to improve invocation accuracy or coverage are welcome.
+Each skill lives in [`skills/<name>/SKILL.md`](./skills/). PRs to improve invocation accuracy or coverage are welcome.
 
 ## License
 

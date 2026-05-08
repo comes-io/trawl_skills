@@ -7,8 +7,9 @@
     "trawlme-skills": "bin/install.js"
   },
   "files": [
-    "skills",
-    "bin",
+    "skills/**/*.md",
+    "skills/**/run-local.mjs",
+    "bin/install.js",
     "README.md",
     "LICENSE"
   ],

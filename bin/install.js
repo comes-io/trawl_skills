@@ -26,6 +26,19 @@ function getVersion() {
   return pkg.version;
 }
 
+const LEGACY_SKILL_DIRS = ['trawl']; // names removed in v0.2.0 due to rename
+
+function migrateLegacy(scope) {
+  const base = getSkillsBase(scope);
+  for (const name of LEGACY_SKILL_DIRS) {
+    const legacy = join(base, name);
+    if (existsSync(legacy)) {
+      rmSync(legacy, { recursive: true, force: true });
+      console.log(`[trawlme-skills] Legacy skill "${name}/" detected — removed (renamed in v0.2.0)`);
+    }
+  }
+}
+
 function installOne(name, scope) {
   const src = join(SKILLS_SOURCE, name);
   const dest = join(getSkillsBase(scope), name);
@@ -85,6 +98,7 @@ switch (cmd) {
       console.error('No skills found in package.');
       process.exit(1);
     }
+    migrateLegacy(scope);
     for (const name of skills) {
       const dest = installOne(name, scope);
       console.log(`✓ Installed "${name}" at ${dest}`);

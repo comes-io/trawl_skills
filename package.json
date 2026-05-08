@@ -1,6 +1,6 @@
 {
   "name": "@trawlme/skills",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Claude Code skills for the Trawl CLI — teaches Claude how to manage scraps via @trawlme/cli",
   "type": "module",
   "bin": {

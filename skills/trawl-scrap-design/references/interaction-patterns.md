@@ -1,6 +1,6 @@
 # Interaction Patterns — Trawl Scrap Scripts
 
-> These patterns are about correctness — making the page reveal the data it functionally hides behind interaction. They are NOT anti-bot stealth. The worker handles bot detection; you handle the page's real interaction surface.
+> *These patterns are about correctness — making the page reveal the data it functionally hides behind interaction. They are NOT anti-bot stealth. The worker handles bot detection; you handle the page's real interaction surface.*
 
 ---
 

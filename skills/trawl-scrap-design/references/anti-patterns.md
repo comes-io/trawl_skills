@@ -6,7 +6,7 @@ These patterns are forbidden in Trawl scrap scripts. Each has a rationale and a 
 
 ### No in-script stealth libraries
 
-`puppeteer-extra-plugin-stealth` was designed for an older Chrome fingerprinting landscape and is widely considered legacy. Newer approaches like rebrowser-patches or patchright operate at the CDP launch layer, not inside the page script. Either way, adding any stealth plugin in your script duplicates what Trawl's worker already does centrally, and it will drift as soon as the worker's policy evolves — your hardcoded plugin version stays frozen.
+`puppeteer-extra-plugin-stealth` was designed for an older Chrome fingerprinting landscape and is widely considered legacy. Newer approaches operate at the CDP launch layer, not inside the page script. Either way, adding any stealth plugin in your script duplicates what Trawl's worker already does centrally, and it will drift as soon as the worker's policy evolves — your hardcoded plugin version stays frozen.
 
 If you need stronger fingerprinting, use a higher proxy tier (see *Trawl Scraping Advanced docs*). Do not patch it in-script.
 

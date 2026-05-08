@@ -9,7 +9,7 @@ Use when writing the Puppeteer script body that runs on a Trawl worker. This ski
 
 ## The worker boundary
 
-The worker takes care of fingerprinting, proxy escalation, AI Fix on broken selectors, and schema validation. Your script focuses on selectors, returnData shape, params, and graceful failure. **Don't add stealth in your script** — it duplicates worker policy and causes drift. See `references/anti-patterns.md` for the full list.
+The worker takes care of fingerprinting, proxy escalation, AI Fix on broken selectors, and schema validation. Your script focuses on selectors, returnData shape, params, and graceful failure. See `references/anti-patterns.md` for the full list.
 
 > **Don't add stealth in your script.** Trawl's worker handles fingerprinting, proxy rotation, and bot-detection countermeasures centrally. Adding stealth plugins, UA spoofing, viewport randomisation, or aggressive jitter in your script duplicates worker policy and causes drift. The worker's policy evolves; your script's hardcoded tricks won't.
 
@@ -140,3 +140,9 @@ Some pages hide data behind real UI interactions — scroll, hover, click, form 
 - *Trawl Data Quality docs* — `checkSchema` usage; note that `validation_failed` is a distinct history status from `error` and `0 items`.
 - *Trawl AI Features docs* — AI Fix quotas, how selector comments improve AI Fix accuracy.
 - *Trawl Schedule + Parameters docs* — `TRAWL.<custom>` params, `RANDOM(...)` and `DATE(...)` helpers.
+
+## What this skill does NOT cover
+
+- Doesn't cover CLI commands — see the `trawl-cli` skill.
+- Doesn't cover authentication flows — see the `trawl-scrap-account` skill.
+- Doesn't cover local test runs — see the `trawl-scrap-local-test` skill.

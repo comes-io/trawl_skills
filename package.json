@@ -23,7 +23,8 @@
     "puppeteer-core": { "optional": true }
   },
   "scripts": {
-    "install-skill": "node bin/install.js"
+    "install-skill": "node bin/install.js",
+    "test": "node bin/install.test.mjs && node skills/trawl-scrap-local-test/scripts/run-local.test.mjs"
   },
   "keywords": [
     "trawl",

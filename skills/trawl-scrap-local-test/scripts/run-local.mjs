@@ -101,7 +101,7 @@ if (flags.remote) {
 
   browser = await puppeteer.default.launch({
     executablePath,
-    headless: flags.headless ? 'new' : false,
+    headless: !!flags.headless,
     slowMo: flags.headless ? 0 : 250,
     devtools: !flags.headless,
     args: ['--no-sandbox'],

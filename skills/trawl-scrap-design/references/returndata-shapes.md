@@ -60,7 +60,7 @@ Parse numeric values before returning. Return the currency as a separate string 
 const rawPrice = await page.$eval(PRICE_SEL, (el) => el.textContent.trim());
 // rawPrice = "€29,99"
 
-const price = parseFloat(rawPrice.replace(/[^0-9.]/g, '').replace(',', '.')) || null;
+const price = parseFloat(rawPrice.replace(',', '.').replace(/[^0-9.]/g, '')) || null;
 const currency = rawPrice.match(/[A-Z]{3}|[€$£¥]/)?.[0] ?? null;
 
 // Return:

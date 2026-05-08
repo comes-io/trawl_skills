@@ -12,10 +12,16 @@ Infinite-scroll lists and lazy-loaded images require real scroll events to revea
 let prev = 0;
 for (let i = 0; i < 10; i++) {
   await page.evaluate(() => window.scrollBy(0, window.innerHeight));
-  await page.waitForFunction((p) => document.querySelectorAll('article').length > p, {}, prev);
-  const count = await page.$$eval('article', (els) => els.length);
-  if (count === prev) break;
-  prev = count;
+  try {
+    await page.waitForFunction(
+      (p) => document.querySelectorAll('article').length > p,
+      { timeout: 3000 },
+      prev,
+    );
+  } catch {
+    break; // no new items loaded within timeout — list exhausted
+  }
+  prev = await page.$$eval('article', (els) => els.length);
 }
 ```
 
@@ -57,7 +63,7 @@ for (const trigger of TRIGGERS) {
 
 ---
 
-### Form fill with realistic events
+### Form fill via page.type()
 
 Use `page.type(selector, value)` which fires `keydown`/`keypress`/`keyup` per character. Some sites watch for paste-style instant value assignment (`el.value = ...`) and reject the form submission.
 
@@ -99,7 +105,7 @@ Click the "next" button and wait for the first item of the new page to appear. T
 
 ```js
 const allItems = [];
-let page_num = 1;
+let pageNum = 1;
 
 while (true) {
   const items = await page.$$eval('[data-testid="result-item"]', (els) =>
@@ -118,8 +124,8 @@ while (true) {
     {},
     firstTitle
   );
-  page_num++;
-  if (page_num > 20) break; // safety cap
+  pageNum++;
+  if (pageNum > 20) break; // safety cap
 }
 
 returnData(allItems);

@@ -32,9 +32,16 @@ function migrateLegacy(scope) {
   const base = getSkillsBase(scope);
   for (const name of LEGACY_SKILL_DIRS) {
     const legacy = join(base, name);
-    if (existsSync(legacy)) {
+    if (!existsSync(legacy)) continue;
+    try {
       rmSync(legacy, { recursive: true, force: true });
-      console.log(`[trawlme-skills] Legacy skill "${name}/" detected — removed (renamed in v0.2.0)`);
+      if (existsSync(legacy)) {
+        console.warn(`[trawlme-skills] Legacy skill "${name}/" detected but could not be removed — please delete ${legacy} manually.`);
+      } else {
+        console.log(`[trawlme-skills] Legacy skill "${name}/" detected — removed (renamed in v0.2.0)`);
+      }
+    } catch (err) {
+      console.warn(`[trawlme-skills] Failed to remove legacy "${name}/": ${err.message}. Please delete ${legacy} manually.`);
     }
   }
 }

@@ -4,7 +4,7 @@ Rules for the JSON objects you pass to `returnData([...])`.
 
 ---
 
-### Flat-as-possible
+## Flat-as-possible
 
 Return a flat object per item. Nest only when source data is genuinely nested — justify with a comment.
 
@@ -26,7 +26,7 @@ Return a flat object per item. Nest only when source data is genuinely nested �
 
 ---
 
-### null vs omission
+## null vs omission
 
 Return `null` for absent optional fields. Never omit the key — schema validation distinguishes "null" from "key never sent", and omission breaks it silently.
 
@@ -40,7 +40,7 @@ Return `null` for absent optional fields. Never omit the key — schema validati
 
 ---
 
-### Dates as ISO-8601 UTC
+## Dates as ISO-8601 UTC
 
 Convert dates with `new Date(...).toISOString()`. Never pass locale-formatted strings — they're timezone-ambiguous and locale-dependent.
 
@@ -52,7 +52,7 @@ const published_at = rawDate ? new Date(rawDate).toISOString() : null;
 
 ---
 
-### Numbers as numbers
+## Numbers as numbers
 
 Parse before returning. Return currency as a separate string field, not embedded in the number.
 
@@ -70,7 +70,7 @@ const currency = rawPrice.match(/[A-Z]{3}|[€$£¥]/)?.[0] ?? null;
 
 ---
 
-### Pagination accumulates within one run
+## Pagination accumulates within one run
 
 Accumulate all pages into one array and call `returnData` once at the end. Calling it per-page or per-item produces one history entry per call and breaks aggregation.
 
@@ -84,7 +84,7 @@ returnData(allItems); // single call with all pages merged
 
 ---
 
-### Compatibility with checkSchema
+## Compatibility with checkSchema
 
 - `validation_failed` is distinct from `error` (script threw) and `0 items` (empty array). Check all three when debugging data gaps.
 - Missing required keys → `validation_failed`, not `error` — no retry triggered.

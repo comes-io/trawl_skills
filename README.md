@@ -51,7 +51,7 @@ The CLI bundles the skills and keeps them in sync with the CLI version.
 
 ## Migrating from v0.1.x
 
-In v0.1.x there was a single skill named `trawl`. v0.2.0 splits it into four focused skills (see table below). When you run `npx @trawlme/skills install` (or `update`), the installer detects the legacy `~/.claude/skills/trawl/` directory and removes it before installing the new four. No manual cleanup needed.
+In v0.1.x there was a single skill named `trawl`. v0.2.0 splits it into four focused skills (see the bundled skills table above). When you run `npx @trawlme/skills install` (or `update`), the installer detects the legacy `~/.claude/skills/trawl/` directory and removes it before installing the new four. No manual cleanup needed.
 
 Restart Claude Code after the install for the new skills to be picked up.
 

@@ -4,7 +4,7 @@
 
 ---
 
-### Scroll to trigger lazy-load
+## Scroll to trigger lazy-load
 
 Use `window.scrollBy` in a loop; wait for new content, stop when the item count stabilises.
 
@@ -29,7 +29,7 @@ Stop when item count is unchanged after a scroll, or a "end of results" sentinel
 
 ---
 
-### Hover to reveal
+## Hover to reveal
 
 Content only rendered on `mouseenter` — read the value after the hover, not before.
 
@@ -44,7 +44,7 @@ const price = await page.$eval(REVEALED_PRICE, (el) => el.textContent.trim());
 
 ---
 
-### Click to expand (FAQ, accordions, "show more")
+## Click to expand (FAQ, accordions, "show more")
 
 Click each trigger, wait for the expanded region, then read its content.
 
@@ -63,7 +63,7 @@ for (const trigger of TRIGGERS) {
 
 ---
 
-### Form fill via page.type()
+## Form fill via page.type()
 
 `page.type` fires `keydown`/`keypress`/`keyup` per character. Some sites reject paste-style instant assignment (`el.value = ...`).
 
@@ -80,7 +80,7 @@ await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
 
 ---
 
-### Wait for state transitions between chained actions
+## Wait for state transitions between chained actions
 
 After a click that triggers an XHR, prefer `waitForResponse` or `waitForNetworkIdle` over a fixed delay.
 
@@ -99,7 +99,7 @@ await page.waitForNetworkIdle();
 
 ---
 
-### Pagination via "next" button
+## Pagination via "next" button
 
 Click "next", wait for the first item to change. Track items across pages to detect stale pagination (same items returned).
 

@@ -4,7 +4,7 @@ These patterns are forbidden in Trawl scrap scripts. Each has a rationale and a 
 
 ---
 
-### No in-script stealth libraries
+## No in-script stealth libraries
 
 `puppeteer-extra-plugin-stealth` is legacy — newer approaches operate at the CDP launch layer. Adding any stealth plugin duplicates what the worker does centrally and will drift when worker policy evolves. For stronger fingerprinting, use a higher proxy tier (*Trawl Scraping Advanced docs*).
 
@@ -12,7 +12,7 @@ Source: [scrapfly.io/blog/posts/puppeteer-stealth-complete-guide](https://scrapf
 
 ---
 
-### No User-Agent spoofing
+## No User-Agent spoofing
 
 `page.setUserAgent(...)` is ineffective — detection cross-references UA against Client Hints, WebGL, canvas, and audio fingerprints. A spoofed UA string alone is easier to flag, not harder, and conflicts with the worker's UA policy.
 
@@ -20,7 +20,7 @@ Source: [browser-use.com/posts/bot-detection](https://browser-use.com/posts/bot-
 
 ---
 
-### No random jitter as primary defence
+## No random jitter as primary defence
 
 Bot detection decides at the fingerprint level — milliseconds before any timing signal exists. `Math.random() * 500` delays have no effect. Small jitter (200–800ms) is acceptable for **rate-limit politeness** only, never as an anti-bot mechanism.
 
@@ -28,7 +28,7 @@ Source: [browser-use.com/posts/bot-detection](https://browser-use.com/posts/bot-
 
 ---
 
-### No fixed setTimeout / waitForTimeout
+## No fixed setTimeout / waitForTimeout
 
 `page.waitForTimeout(N)` is deprecated. `setTimeout` is unreliable under load and slows every run unconditionally. Use state-based waits:
 - `page.waitForSelector(selector)` — most targeted
@@ -42,7 +42,7 @@ Sources:
 
 ---
 
-### No deep CSS chains
+## No deep CSS chains
 
 `div > div:nth-child(2) > div > span.price`-style selectors break on every layout refactor and give AI Fix no semantic context. Anchor on semantic attributes in priority order:
 1. `data-*` — stable by engineering convention
@@ -56,7 +56,7 @@ Source: [rebrowser.net/blog/xpath-vs-css-selectors-a-comprehensive-guide-for-web
 
 ---
 
-### No silent catch on data writes
+## No silent catch on data writes
 
 Never swallow extraction errors silently:
 
@@ -77,7 +77,7 @@ Silent catches hide selector breakage from AI Fix. Explicit nulls surface in Tra
 
 ---
 
-### Sources
+## Sources
 
 - https://pptr.dev/api/puppeteer.page.waitfornetworkidle
 - https://dev.to/checkly/avoiding-hard-waits-in-playwright-and-puppeteer-272

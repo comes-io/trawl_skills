@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Smoke test — invokes run-local.mjs --help and checks exit code 0 + expected text.
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -9,7 +9,7 @@ const harness = join(here, 'run-local.mjs');
 
 let failed = false;
 try {
-  const out = execSync(`node ${harness} --help`, { encoding: 'utf8' });
+  const out = execFileSync(process.execPath, [harness, '--help'], { encoding: 'utf8' });
   if (!out.includes('--url=')) { console.error('FAIL: --help missing --url flag'); failed = true; }
   if (!out.includes('--params=')) { console.error('FAIL: --help missing --params flag'); failed = true; }
   if (!out.includes('--account-cookies=')) { console.error('FAIL: --help missing --account-cookies flag'); failed = true; }
@@ -22,7 +22,7 @@ try {
 // Fixture run — verify the harness can actually execute a scrap and produce returnData.
 const fixture = join(here, 'fixture-scrap.mjs');
 try {
-  const out = execSync(`node ${harness} ${fixture} --headless`, { encoding: 'utf8' });
+  const out = execFileSync(process.execPath, [harness, fixture, '--headless'], { encoding: 'utf8' });
   if (!out.includes('"title": "hello"')) {
     console.error('FAIL: fixture run did not produce expected returnData');
     failed = true;

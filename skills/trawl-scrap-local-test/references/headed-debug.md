@@ -2,11 +2,11 @@
 
 Advanced debugging flags and techniques for `run-local.mjs`.
 
-### Default flags
+## Default flags
 
 The harness launches Chrome with `headless: false`, `slowMo: 250`, `devtools: true`. Tune `slowMo` between 100 and 500 — lower is faster, higher lets you watch each action.
 
-### Pause inside page.evaluate
+## Pause inside page.evaluate
 
 `debugger` inside an `evaluate` callback pauses in the embedded DevTools Sources panel. Both conditions (headed + DevTools open) are met under the default harness flags.
 
@@ -17,7 +17,7 @@ await page.evaluate(() => {
 });
 ```
 
-### Attach to an existing Chrome
+## Attach to an existing Chrome
 
 Launch Chrome with a remote debugging port to log in manually (MFA, OAuth) before the script runs.
 
@@ -35,7 +35,7 @@ node run-local.mjs scrap.js --remote
 
 The harness calls `puppeteer.connect({ browserURL: 'http://127.0.0.1:9222' })` and opens a new page. It does not close the browser when done.
 
-### Intermediate snapshots
+## Intermediate snapshots
 
 Insert `page.screenshot` between actions to see actual page state when a selector doesn't match.
 
@@ -48,7 +48,7 @@ await page.screenshot({ path: '/tmp/step-2.png' });
 
 Open the PNG files in any image viewer. On macOS: `open /tmp/step-1.png`.
 
-### Network capture
+## Network capture
 
 Log `response` events to debug API-driven SPAs where the DOM may be stale while the XHR already returned data.
 

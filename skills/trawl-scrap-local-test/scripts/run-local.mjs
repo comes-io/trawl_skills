@@ -49,8 +49,11 @@ const scrapBody = readFileSync(resolve(scrapPath), 'utf8');
 const TRAWL = { url: flags.url || null };
 if (typeof flags.params === 'string') {
   for (const pair of flags.params.split(',')) {
-    const [k, v] = pair.split('=');
-    if (k) TRAWL[k] = v;
+    const eqIdx = pair.indexOf('=');
+    if (eqIdx <= 0) continue;
+    const k = pair.slice(0, eqIdx);
+    const v = pair.slice(eqIdx + 1);
+    TRAWL[k] = v;
   }
 }
 

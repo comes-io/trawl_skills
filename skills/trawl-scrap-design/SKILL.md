@@ -1,6 +1,6 @@
 ---
 name: trawl-scrap-design
-description: Use when writing or fixing a Puppeteer script that runs on a Trawl worker — selector resilience, returnData shape, params handling, validation, and what NOT to do (no in-script stealth, no fixed delays, no UA spoofing). Triggers on "create a scrap that...", "fix my scrap", "why does my scrap return 0 items", "scrape <site>", or any prompt about the body of a Trawl scrap script.
+description: Use when writing or fixing a Puppeteer script that runs on a Trawl worker — selector resilience, returnData shape, params handling, validation, and what NOT to do (no in-script stealth, no fixed delays, no UA spoofing). Triggers on "create a scrap that...", "fix my scrap", "why does my scrap return 0 items", "scrape <site>", or any prompt about the body of a Trawl scrap script. Does NOT cover CLI commands (see trawl-cli), authentication flows (see trawl-scrap-account), or local test runs (see trawl-scrap-local-test).
 ---
 
 # Trawl Scrap Design

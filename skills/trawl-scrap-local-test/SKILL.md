@@ -1,6 +1,6 @@
 ---
 name: trawl-scrap-local-test
-description: Use when testing a Trawl scrap locally before publishing — runs the Puppeteer script on the user's IP with headed Chrome and devtools, mimicking the worker entry contract (TRAWL.* params, account.* auth, returnData/saveSession stubs). Triggers on "test my scrap locally", "debug before push", "run scrap on my machine", "preview returnData output".
+description: Use when testing a Trawl scrap locally before publishing — runs the Puppeteer script on the user's IP with headed Chrome and devtools, mimicking the worker entry contract (TRAWL.* params, account.* auth, returnData/saveSession stubs). Triggers on "test my scrap locally", "debug before push", "run scrap on my machine", "preview returnData output". Does NOT cover writing the script body (see trawl-scrap-design), authentication flows (see trawl-scrap-account), or managing scraps via CLI (see trawl-cli).
 ---
 
 # Trawl Scrap Local Test

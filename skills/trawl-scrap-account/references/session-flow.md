@@ -53,22 +53,33 @@ This is handled by the `trawl-cli` skill. After clearing, the next run finds `ac
 
 Distinguish two failure modes:
 
-**Credentials wrong** — the site returns an error on the login form (wrong password message, 401 from the auth API). Return immediately with a clear error rather than trying to scrape post-login pages.
+**Navigation timed out or network failed** — `page.waitForNavigation` throws when the browser can't complete the navigation (network error, timeout, etc.). The `try/catch` catches this case only; it does NOT detect wrong credentials.
+
+**Credentials wrong** — the site rejects the login form and redirects back to `/login` (or leaves the URL unchanged). This succeeds navigationally, so the `try/catch` never fires. Detect it by checking `page.url()` after the navigation resolves.
 
 ```js
+const page = await browser.newPage();
+
 try {
+  await page.goto('https://example.com/login', { waitUntil: 'domcontentloaded' });
+  await page.type('#username', account.username);
+  await page.type('#password', account.password);
   await Promise.all([
     page.click('button[type=submit]'),
-    page.waitForNavigation({ waitUntil: 'networkidle2' }),
+    page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 }),
   ]);
 } catch (err) {
-  throw new Error(`Login navigation failed — check credentials: ${err.message}`);
+  // Navigation timed out or network failed — distinct from wrong-credentials.
+  throw new Error(`Login navigation failed: ${err.message}`);
 }
 
-// Verify we landed on the expected post-login URL, not back on the login page.
 if (page.url().includes('/login')) {
-  throw new Error('Login failed — still on login page after submit. Check account.username / account.password.');
+  // Form rejected our credentials and we're still on the login page.
+  throw new Error('Login failed: wrong credentials');
 }
+
+// Persist for next run only after we've confirmed login success.
+await saveSession(await page.cookies());
 ```
 
 **Login form changed** — the selector for `#username`, `#password`, or `button[type=submit]` no longer matches. This is a selector breakage, not a credentials problem. Throw with a message that names the broken selector so Trawl's AI Fix can surface it:

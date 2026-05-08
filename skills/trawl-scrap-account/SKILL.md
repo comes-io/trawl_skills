@@ -17,9 +17,9 @@ This applies even when authenticated. Injecting cookies does not change the work
 
 1. **Plain username/password login, no MFA** → use **Trawl-managed credentials** (section below). Trawl stores credentials encrypted; the script reads `account.username` / `account.password` at runtime and calls `saveSession()` after a successful login to reuse the session on subsequent runs.
 
-2. **MFA, SSO, OAuth, or you don't want to hand credentials to Trawl** → use **Flavour B — Persisted BYO-cookies**. Export cookies from a logged-in browser session, push them into `account.session.cookies` via the Trawl API persistence endpoint, and the script reads them back before navigation. Cookies are encrypted at rest.
+2. **One-shot test or short-lived experiment, or you want to verify your cookies work before setting up persistence** → use **Flavour A — Embedded BYO-cookies**. Hard-code the cookie array directly in the script body. Accepts the trade-off that cookies are in plain text in the script source.
 
-3. **One-shot test or short-lived experiment** → use **Flavour A — Embedded BYO-cookies**. Hard-code the cookie array directly in the script body. Accepts the trade-off that cookies are in plain text in the script source.
+3. **MFA, SSO, OAuth, or you don't want to hand credentials to Trawl** → use **Flavour B — Persisted BYO-cookies**. Export cookies from a logged-in browser session, push them into `account.session.cookies` via the Trawl API persistence endpoint, and the script reads them back before navigation. Cookies are encrypted at rest.
 
 ## Trawl-managed credentials (legacy flow)
 
@@ -83,9 +83,11 @@ Export cookies from a logged-in browser session and push them into `account.sess
 The script reads the same global as the Trawl-managed flow:
 
 ```js
-const page = await browser.newPage();
+if (!account.session?.cookies) {
+  throw new Error('Flavour B requires account.session.cookies — push them via the persistence endpoint first.');
+}
 
-// account.session.cookies is populated by the persistence endpoint.
+const page = await browser.newPage();
 await page.setCookie(...account.session.cookies);
 await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
 ```
@@ -96,7 +98,7 @@ See `references/cookie-injection.md` for domain matching rules, HttpOnly cookie 
 
 ## Anti-patterns to avoid
 
-Being authenticated does not change the worker boundary rules. See `trawl-scrap-design/references/anti-patterns.md` for the full list. In particular:
+Being authenticated does not change the worker boundary rules. See the `trawl-scrap-design` skill for the full anti-patterns list (no in-script stealth, no UA spoofing, no fixed delays, etc.). The same rules apply when authenticating — credentials don't justify in-script stealth. In particular:
 
 - No stealth plugins even when cookies are set.
 - No `waitForTimeout` — use state-based waits.

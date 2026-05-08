@@ -1,22 +1,30 @@
 {
   "name": "@trawlme/skills",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Claude Code skills for the Trawl CLI — teaches Claude how to manage scraps via @trawlme/cli",
   "type": "module",
   "bin": {
     "trawlme-skills": "bin/install.js"
   },
   "files": [
-    "skills",
-    "bin",
+    "skills/**/*.md",
+    "skills/**/run-local.mjs",
+    "bin/install.js",
     "README.md",
     "LICENSE"
   ],
   "engines": {
     "node": ">=18"
   },
+  "peerDependencies": {
+    "puppeteer-core": "^22.0.0"
+  },
+  "peerDependenciesMeta": {
+    "puppeteer-core": { "optional": true }
+  },
   "scripts": {
-    "install-skill": "node bin/install.js"
+    "install-skill": "node bin/install.js",
+    "test": "node bin/install.test.mjs && node skills/trawl-scrap-local-test/scripts/run-local.test.mjs"
   },
   "keywords": [
     "trawl",

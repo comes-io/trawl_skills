@@ -11,7 +11,10 @@ Follows the [Anthropic Agent Skills](https://github.com/anthropics/skills) layou
 
 | Skill | What it does |
 |---|---|
-| `trawl` | Use the `trawl` CLI to manage scraps (auth, list, run, watch, debug) |
+| `trawl-cli` | Use the `trawl` CLI to manage scraps via @trawlme/cli (auth, list, create, run, watch, debug). |
+| `trawl-scrap-design` | Best practices for writing the Puppeteer script body — selectors, returnData shape, params, validation, anti-patterns. |
+| `trawl-scrap-account` | Authentication — Trawl-managed credentials, BYO-cookies (embedded and persisted flavours), session reuse. |
+| `trawl-scrap-local-test` | Run a scrap locally with headed Chrome before publishing, mirroring the worker entry contract. |
 
 ## Install
 
@@ -32,7 +35,7 @@ npx @trawlme/skills install --local
 Install a specific skill only:
 
 ```bash
-npx @trawlme/skills install trawl
+npx @trawlme/skills install trawl-cli
 ```
 
 ### Option 2 — via the Trawl CLI
@@ -46,15 +49,21 @@ trawl skills install
 
 The CLI bundles the skills and keeps them in sync with the CLI version.
 
+## Migrating from v0.1.x
+
+In v0.1.x there was a single skill named `trawl`. v0.2.0 splits it into four focused skills (see the bundled skills table above). When you run `npx @trawlme/skills install` (or `update`), the installer detects the legacy `~/.claude/skills/trawl/` directory and removes it before installing the new four. No manual cleanup needed.
+
+Restart Claude Code after the install for the new skills to be picked up.
+
 ## Usage
 
 Once installed, restart Claude Code. Skills auto-trigger when you ask Claude about Trawl, scraps, scheduling jobs, or use the `trawl` CLI.
 
 Example prompts:
-- "list my failed scraps from last week"
-- "create a scrap that scrapes example.com daily at 9am"
-- "why did scrap 64a... fail?"
-- "show me the data from my latest run"
+- "list my failed scraps from last week" (`trawl-cli`)
+- "create a scrap that scrapes example.com daily at 9am" (`trawl-cli` + `trawl-scrap-design`)
+- "scrape a site behind login without giving Trawl my credentials" (`trawl-scrap-account`)
+- "test my scrap locally before pushing" (`trawl-scrap-local-test`)
 
 ## Commands
 
@@ -69,7 +78,7 @@ trawlme-skills help                             Print usage
 
 ## Prerequisites
 
-The `trawl` skill assumes `@trawlme/cli` is installed and the user is authenticated:
+The `trawl-cli` skill assumes `@trawlme/cli` is installed and the user is authenticated:
 
 ```bash
 npm install -g @trawlme/cli

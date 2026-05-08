@@ -1,6 +1,6 @@
 ---
-name: trawl
-description: Use this skill when the user wants to manage Trawl scraps (scraping jobs) — listing, creating, running, watching, or inspecting them — or when working with the `trawl` command-line tool from the `@trawlme/cli` package. Trawl is a hosted scraping platform where each "scrap" is a Puppeteer-based scraping job that can run on a cron schedule and emit data.
+name: trawl-cli
+description: Use the `trawl` CLI to manage scraps via @trawlme/cli — listing, creating, running, watching, debugging. Triggers when the user mentions trawl, scraps, scheduled scraping jobs they own, or uses the `trawl` command. Does NOT cover writing the Puppeteer script body (see trawl-scrap-design), authentication flows (see trawl-scrap-account), or local test runs (see trawl-scrap-local-test).
 ---
 
 # Trawl CLI
@@ -15,7 +15,7 @@ Trigger when the user mentions:
 - The `trawl` CLI command (e.g. `trawl scraps list`)
 - Wanting to create / run / inspect a scraping job
 
-Do NOT trigger for generic "scrape this URL" requests with no Trawl context — point them at a generic Puppeteer/Playwright approach instead.
+Do NOT trigger for generic "scrape this URL" requests with no Trawl context.
 
 ## Prerequisites
 
@@ -37,7 +37,7 @@ If the user gets `Session expired or invalid. Run: trawl login`, their stored JW
 
 ## Core commands
 
-All commands accept `--json` (where listed) for machine-readable output. Use `--json` whenever you need to pipe into other commands or parse the result.
+All commands accept `--json` (where listed) for machine-readable or pipeable output.
 
 ### List scraps
 
@@ -70,14 +70,7 @@ Flags:
 - `-r, --request` — the Puppeteer script body (must call `returnData(arr)`)
 - `-s, --scrapper` — engine, defaults to `puppeteer`
 
-Minimal Puppeteer request body:
-
-```js
-var page = await browser.newPage();
-await page.goto(TRAWL.url, { waitUntil: 'domcontentloaded' });
-var items = await page.$$eval('a', els => els.map(e => ({ title: e.textContent })));
-returnData(items);
-```
+For the script body, see the `trawl-scrap-design` skill.
 
 ### Update a scrap
 
@@ -104,16 +97,9 @@ trawl scraps rm <id>                       # prompts for confirmation
 trawl scraps rm <id> --force               # no prompt, useful in scripts
 ```
 
-## Scrap accounts (per-scrap auth)
+## Scrap accounts
 
-When the target site requires login, attach credentials to a scrap:
-
-```bash
-trawl scraps account set <id> -u user@example.com -p '<password>'
-trawl scraps account status <id> --json     # check session validity
-trawl scraps account clear-session <id>     # force re-login on next run
-trawl scraps account delete <id> --force    # remove stored creds
-```
+For per-scrap authentication, see the `trawl-scrap-account` skill. CLI commands: `trawl scraps account set/status/clear-session/delete`.
 
 ## Common patterns
 
@@ -144,7 +130,7 @@ trawl scraps run <id> --watch
 
 ## Output shapes (JSON)
 
-A scrap object has at minimum:
+Scrap object shape:
 
 ```json
 {
@@ -161,7 +147,7 @@ A scrap object has at minimum:
 }
 ```
 
-`trawl scraps data <id> --json` returns whatever array the user's script passed to `returnData(...)`.
+`trawl scraps data <id> --json` returns the array passed to `returnData(...)`.
 
 ## Errors to recognize
 
@@ -173,6 +159,6 @@ A scrap object has at minimum:
 
 ## What this skill does NOT do
 
-- Doesn't write the Puppeteer scraping logic for the user — that's their domain. Suggest patterns but let them iterate.
-- Doesn't bypass site anti-bot measures. If a scrap fails because of bot detection, the answer is on Trawl's side (worker fingerprint, sessions), not the CLI.
-- Doesn't manage billing, organizations, or workers. Those live on the web app at trawl.me.
+- Script body → `trawl-scrap-design`
+- Authentication / session injection → `trawl-scrap-account`
+- Local debugging runs → `trawl-scrap-local-test`

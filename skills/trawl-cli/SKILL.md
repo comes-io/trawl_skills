@@ -15,12 +15,7 @@ Trigger when the user mentions:
 - The `trawl` CLI command (e.g. `trawl scraps list`)
 - Wanting to create / run / inspect a scraping job
 
-Do NOT trigger for generic "scrape this URL" requests with no Trawl context — point them at a generic Puppeteer/Playwright approach instead.
-
-**When NOT to use:**
-- Writing or fixing the Puppeteer script body → see the `trawl-scrap-design` skill.
-- Per-scrap authentication (credentials, BYO-cookies, session management) → see the `trawl-scrap-account` skill.
-- Running a scrap locally for debugging → see the `trawl-scrap-local-test` skill.
+Do NOT trigger for generic "scrape this URL" requests with no Trawl context.
 
 ## Prerequisites
 
@@ -42,7 +37,7 @@ If the user gets `Session expired or invalid. Run: trawl login`, their stored JW
 
 ## Core commands
 
-All commands accept `--json` (where listed) for machine-readable output. Use `--json` whenever you need to pipe into other commands or parse the result.
+All commands accept `--json` (where listed) for machine-readable or pipeable output.
 
 ### List scraps
 
@@ -75,7 +70,7 @@ Flags:
 - `-r, --request` — the Puppeteer script body (must call `returnData(arr)`)
 - `-s, --scrapper` — engine, defaults to `puppeteer`
 
-For the script body content, see the `trawl-scrap-design` skill — it covers selectors, returnData shape, and what NOT to do.
+For the script body, see the `trawl-scrap-design` skill.
 
 ### Update a scrap
 
@@ -104,7 +99,7 @@ trawl scraps rm <id> --force               # no prompt, useful in scripts
 
 ## Scrap accounts
 
-For per-scrap authentication (Trawl-managed credentials, BYO-cookies), see the `trawl-scrap-account` skill. Use `trawl scraps account set/status/clear-session/delete` from the CLI.
+For per-scrap authentication, see the `trawl-scrap-account` skill. CLI commands: `trawl scraps account set/status/clear-session/delete`.
 
 ## Common patterns
 
@@ -135,7 +130,7 @@ trawl scraps run <id> --watch
 
 ## Output shapes (JSON)
 
-A scrap object has at minimum:
+Scrap object shape:
 
 ```json
 {
@@ -152,7 +147,7 @@ A scrap object has at minimum:
 }
 ```
 
-`trawl scraps data <id> --json` returns whatever array the user's script passed to `returnData(...)`.
+`trawl scraps data <id> --json` returns the array passed to `returnData(...)`.
 
 ## Errors to recognize
 
@@ -164,6 +159,6 @@ A scrap object has at minimum:
 
 ## What this skill does NOT do
 
-- Doesn't write the Puppeteer scraping logic — see the `trawl-scrap-design` skill.
-- Doesn't handle authentication and session injection — see the `trawl-scrap-account` skill.
-- Doesn't run scraps locally for debugging — see the `trawl-scrap-local-test` skill.
+- Script body → `trawl-scrap-design`
+- Authentication / session injection → `trawl-scrap-account`
+- Local debugging runs → `trawl-scrap-local-test`

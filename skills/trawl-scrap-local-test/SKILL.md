@@ -64,13 +64,12 @@ No changes to the script body are needed to run it locally.
 
 ## Limitations (intentional)
 
-- Local runs use the user's IP — no proxy tier.
-- Local runs use vanilla `puppeteer-core` — no fingerprint policy.
-- Local pass does not guarantee worker pass; the script logic is what's being tested locally, not the network surface.
+- Local runs use the user's IP — no proxy tier, no fingerprint policy.
+- Local pass does not guarantee worker pass — script logic is tested, not the network surface.
 
 ## What this skill does NOT cover
 
-- Does not write the script body — see the `trawl-scrap-design` skill.
-- Does not manage scraps via CLI — see the `trawl-cli` skill.
-- Does not handle authentication flows — see the `trawl-scrap-account` skill.
-- For advanced debugging options (DevTools pause, network capture, attaching to an existing Chrome), see `references/headed-debug.md`.
+- Script body → `trawl-scrap-design`
+- CLI scrap management → `trawl-cli`
+- Authentication flows → `trawl-scrap-account`
+- Advanced debugging (DevTools pause, network capture, attach to existing Chrome) → `references/headed-debug.md`

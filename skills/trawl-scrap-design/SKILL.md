@@ -5,11 +5,11 @@ description: Use when writing or fixing a Puppeteer script that runs on a Trawl 
 
 # Trawl Scrap Design
 
-Use when writing the Puppeteer script body that runs on a Trawl worker. This skill covers what to do (selectors, waits, returnData shape, params, resilience) and what NOT to do (no stealth, no fixed delays, no UA spoofing).
+Use when writing the Puppeteer script body that runs on a Trawl worker.
 
 ## The worker boundary
 
-The worker takes care of fingerprinting, proxy escalation, AI Fix on broken selectors, and schema validation. Your script focuses on selectors, returnData shape, params, and graceful failure. See `references/anti-patterns.md` for the full list.
+The worker handles fingerprinting, proxy escalation, AI Fix, and schema validation. Your script handles selectors, returnData shape, params, and graceful failure. See `references/anti-patterns.md`.
 
 > **Don't add stealth in your script.** Trawl's worker handles fingerprinting, proxy rotation, and bot-detection countermeasures centrally. Adding stealth plugins, UA spoofing, viewport randomisation, or aggressive jitter in your script duplicates worker policy and causes drift. The worker's policy evolves; your script's hardcoded tricks won't.
 
@@ -22,7 +22,7 @@ Selector priority (most to least resilient):
 3. Stable class (short, non-generated, meaningful name)
 4. XPath with text anchor — use when no attribute is reliable
 
-**One named selector per logical field.** Declare selectors as constants at the top of the script with a comment explaining why that selector was chosen. This context is used by Trawl's AI Fix to pick a replacement when the selector breaks.
+**One named selector per logical field.** Declare as constants at the top with a comment explaining the choice — AI Fix uses that context to pick a replacement when the selector breaks.
 
 ```js
 // data-testid is stable — the engineering team committed to never removing it
@@ -79,7 +79,7 @@ returnData([
 - **`RANDOM(...)`** — a helper that returns a random value from a list (see Trawl params docs).
 - **`DATE(±N, unit, format)`** — a date helper that returns a formatted date offset from now.
 
-Validate all inputs early and fail loud — a missing required param should throw before any network call.
+Validate inputs early — throw before any network call if a required param is missing.
 
 ```js
 const { url, category } = TRAWL;
@@ -90,7 +90,7 @@ await page.goto(url, { waitUntil: 'domcontentloaded' });
 
 ## Resilience
 
-Wrap each logical field in its own `try/catch` and return what you have. Only throw at the top level for structural failures that make the entire run meaningless.
+Wrap each logical field in its own `try/catch` and return what you have. Throw only for structural failures that make the entire run meaningless.
 
 ```js
 let price = null;
@@ -124,14 +124,7 @@ Full detail in `references/anti-patterns.md`. Summary:
 
 ## Interaction patterns (when the page needs them)
 
-Some pages hide data behind real UI interactions — scroll, hover, click, form fill. These are about **functional correctness**, not bot evasion. See `references/interaction-patterns.md` for code blocks covering:
-
-- Scroll to trigger lazy-load (infinite scroll)
-- Hover to reveal pricing / tooltips
-- Click to expand (FAQ, accordions, "show more")
-- Form fill with per-keystroke events (`page.type`)
-- Wait for state transitions between chained actions
-- Pagination via "next" button
+Some pages hide data behind real UI interactions — scroll, hover, click, form fill. These are about **functional correctness**, not bot evasion. See `references/interaction-patterns.md` for patterns: lazy-load scroll, hover-to-reveal, click-to-expand, `page.type` form fill, state-transition waits, "next" pagination.
 
 ## Canonical Trawl docs
 
@@ -143,6 +136,6 @@ Some pages hide data behind real UI interactions — scroll, hover, click, form 
 
 ## What this skill does NOT cover
 
-- Doesn't cover CLI commands — see the `trawl-cli` skill.
-- Doesn't cover authentication flows — see the `trawl-scrap-account` skill.
-- Doesn't cover local test runs — see the `trawl-scrap-local-test` skill.
+- CLI commands → `trawl-cli`
+- Authentication flows → `trawl-scrap-account`
+- Local test runs → `trawl-scrap-local-test`

@@ -4,13 +4,11 @@ Advanced debugging flags and techniques for `run-local.mjs`.
 
 ### Default flags
 
-The harness launches Chrome with `headless: false`, `slowMo: 250`, and `devtools: true`. This opens a visible browser window with DevTools attached.
-
-Tune `slowMo` between 100 and 500 depending on what you want to observe. Lower values run faster; higher values give more time to watch each action in the browser.
+The harness launches Chrome with `headless: false`, `slowMo: 250`, `devtools: true`. Tune `slowMo` between 100 and 500 — lower is faster, higher lets you watch each action.
 
 ### Pause inside page.evaluate
 
-The `debugger` keyword inside an `evaluate` callback pauses execution in the embedded DevTools. Set a breakpoint or step through the callback from the Sources panel.
+`debugger` inside an `evaluate` callback pauses in the embedded DevTools Sources panel. Both conditions (headed + DevTools open) are met under the default harness flags.
 
 ```js
 await page.evaluate(() => {
@@ -19,11 +17,9 @@ await page.evaluate(() => {
 });
 ```
 
-The browser must be visible (not headless) and DevTools must be open — both are true under the default harness flags.
-
 ### Attach to an existing Chrome
 
-Start Chrome with a remote debugging port before running the harness. This lets you log in manually to sites that require MFA or browser-based OAuth before the script runs.
+Launch Chrome with a remote debugging port to log in manually (MFA, OAuth) before the script runs.
 
 ```bash
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
@@ -37,11 +33,11 @@ Log in manually in that Chrome window (complete MFA, solve CAPTCHA, etc.). Then 
 node run-local.mjs scrap.js --remote
 ```
 
-The harness calls `puppeteer.connect({ browserURL: 'http://127.0.0.1:9222' })` and opens a new page in the existing browser. It does not close the browser when the script finishes.
+The harness calls `puppeteer.connect({ browserURL: 'http://127.0.0.1:9222' })` and opens a new page. It does not close the browser when done.
 
 ### Intermediate snapshots
 
-Insert `page.screenshot` calls between actions to capture page state at each step. Useful when a selector does not match and you want to see what the page actually looked like at that moment.
+Insert `page.screenshot` between actions to see actual page state when a selector doesn't match.
 
 ```js
 await page.screenshot({ path: '/tmp/step-1.png' });
@@ -54,13 +50,13 @@ Open the PNG files in any image viewer. On macOS: `open /tmp/step-1.png`.
 
 ### Network capture
 
-Listen to `response` events to log every request and its HTTP status. Useful for debugging API-driven SPAs where the visible DOM may be stale while the underlying XHR already returned data.
+Log `response` events to debug API-driven SPAs where the DOM may be stale while the XHR already returned data.
 
 ```js
 page.on('response', (r) => console.log(r.status(), r.url()));
 ```
 
-Place this before the first `page.goto` so all requests are captured. Filter to specific endpoints with a string check:
+Place before the first `page.goto`. Filter to specific endpoints:
 
 ```js
 page.on('response', (r) => {

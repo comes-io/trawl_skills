@@ -6,9 +6,7 @@ These patterns are forbidden in Trawl scrap scripts. Each has a rationale and a 
 
 ### No in-script stealth libraries
 
-`puppeteer-extra-plugin-stealth` was designed for an older Chrome fingerprinting landscape and is widely considered legacy. Newer approaches operate at the CDP launch layer, not inside the page script. Either way, adding any stealth plugin in your script duplicates what Trawl's worker already does centrally, and it will drift as soon as the worker's policy evolves — your hardcoded plugin version stays frozen.
-
-If you need stronger fingerprinting, use a higher proxy tier (see *Trawl Scraping Advanced docs*). Do not patch it in-script.
+`puppeteer-extra-plugin-stealth` is legacy — newer approaches operate at the CDP launch layer. Adding any stealth plugin duplicates what the worker does centrally and will drift when worker policy evolves. For stronger fingerprinting, use a higher proxy tier (*Trawl Scraping Advanced docs*).
 
 Source: [scrapfly.io/blog/posts/puppeteer-stealth-complete-guide](https://scrapfly.io/blog/posts/puppeteer-stealth-complete-guide)
 
@@ -16,7 +14,7 @@ Source: [scrapfly.io/blog/posts/puppeteer-stealth-complete-guide](https://scrapf
 
 ### No User-Agent spoofing
 
-`page.setUserAgent(...)` is ineffective against modern bot detection. Detection systems cross-reference UA strings with Client Hints (`Sec-CH-UA-*`), WebGL renderer, canvas fingerprint, and audio fingerprint. Spoofing the UA string alone produces an inconsistent signal that is easier to flag, not harder. It also conflicts with the worker's UA policy.
+`page.setUserAgent(...)` is ineffective — detection cross-references UA against Client Hints, WebGL, canvas, and audio fingerprints. A spoofed UA string alone is easier to flag, not harder, and conflicts with the worker's UA policy.
 
 Source: [browser-use.com/posts/bot-detection](https://browser-use.com/posts/bot-detection)
 
@@ -24,9 +22,7 @@ Source: [browser-use.com/posts/bot-detection](https://browser-use.com/posts/bot-
 
 ### No random jitter as primary defence
 
-Modern bot detection makes its decision at the fingerprint level — in milliseconds, before any human-timing signal exists in the session. A `Math.random() * 500` delay between page actions has no effect on that decision.
-
-Small randomised inter-action delays (200–800ms) are acceptable for **rate-limit politeness** when a target page is sensitive to burst requests — that is a different concern. Use them sparingly for that purpose only, never as an anti-bot mechanism.
+Bot detection decides at the fingerprint level — milliseconds before any timing signal exists. `Math.random() * 500` delays have no effect. Small jitter (200–800ms) is acceptable for **rate-limit politeness** only, never as an anti-bot mechanism.
 
 Source: [browser-use.com/posts/bot-detection](https://browser-use.com/posts/bot-detection)
 
@@ -34,9 +30,7 @@ Source: [browser-use.com/posts/bot-detection](https://browser-use.com/posts/bot-
 
 ### No fixed setTimeout / waitForTimeout
 
-`page.waitForTimeout(N)` was deprecated and removed from the Puppeteer API. `setTimeout` works but is unreliable: it passes on fast machines and fails on slow ones or under load. Fixed delays also slow every run unconditionally.
-
-Always use state-based waits:
+`page.waitForTimeout(N)` is deprecated. `setTimeout` is unreliable under load and slows every run unconditionally. Use state-based waits:
 - `page.waitForSelector(selector)` — most targeted
 - `page.waitForNetworkIdle()` — for SPA-heavy pages
 - `page.waitForFunction(fn)` — for complex DOM conditions
@@ -50,15 +44,13 @@ Sources:
 
 ### No deep CSS chains
 
-Selectors like `div > div:nth-child(2) > div > span.price` are fragile — a minor layout refactor breaks them silently. They also give Trawl's AI Fix no semantic context when trying to pick a replacement.
-
-Anchor on semantic attributes in this priority order:
+`div > div:nth-child(2) > div > span.price`-style selectors break on every layout refactor and give AI Fix no semantic context. Anchor on semantic attributes in priority order:
 1. `data-*` — stable by engineering convention
 2. `aria-*` / `role` — semantically meaningful
 3. Short, stable class name (not generated hash)
 4. XPath with text anchor — when nothing else works
 
-Document *why* the selector was chosen in a comment. That comment is what AI Fix uses to search for an equivalent.
+Document *why* the selector was chosen in a comment — AI Fix uses it to find an equivalent.
 
 Source: [rebrowser.net/blog/xpath-vs-css-selectors-a-comprehensive-guide-for-web-automation-and-testing](https://rebrowser.net/blog/xpath-vs-css-selectors-a-comprehensive-guide-for-web-automation-and-testing)
 
@@ -81,7 +73,7 @@ try {
 }
 ```
 
-Silent catches hide selector breakage from AI Fix and from your run history. Explicit nulls in `returnData` are surfaced in Trawl's Data Quality view; hidden undefined values are not.
+Silent catches hide selector breakage from AI Fix. Explicit nulls surface in Trawl's Data Quality view; hidden undefined values do not.
 
 ---
 

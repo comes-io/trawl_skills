@@ -4,15 +4,13 @@ title: Session Flow
 
 ### saveSession(cookies)
 
-`saveSession` is an async helper injected by the worker. Call it immediately after a successful login redirect, passing the current page's cookie array.
+Async helper injected by the worker. Call after confirming login succeeded — not on the login page or an error page.
 
 ```js
 await saveSession(await page.cookies());
 ```
 
-The worker persists the cookie array encrypted at rest. On the next run, `account.session.cookies` is populated with the saved array and the login flow can be skipped entirely.
-
-Call `saveSession` only once per run, after confirming the login succeeded (e.g. after `waitForNavigation` resolves to the post-login URL). Calling it on the login page itself or on an error page persists a broken session.
+The worker persists the cookie array encrypted. On the next run, `account.session.cookies` is populated and the login flow is skipped. Call once per run only.
 
 ### Reuse pattern (full code)
 
@@ -37,25 +35,23 @@ if (account.session?.cookies) {
 }
 ```
 
-The `account.session?.cookies` check uses optional chaining because `account.session` is `undefined` on the very first run (no session has been saved yet). Both branches should reach the same post-login URL before the scraping logic starts.
+`account.session` is `undefined` on the first run — hence the optional chain. Both branches must reach the same post-login URL before scraping starts.
 
 ### Forced re-login
-
-If the saved session has expired or the user needs to force the next run to reauthenticate, clear the stored session via the CLI:
 
 ```bash
 trawl scraps account clear-session <scrap-id>
 ```
 
-This is handled by the `trawl-cli` skill. After clearing, the next run finds `account.session` undefined and falls into the login branch, re-running `saveSession` on success.
+The next run finds `account.session` undefined, falls into the login branch, and re-runs `saveSession` on success.
 
 ### When the login flow itself breaks
 
-Distinguish two failure modes:
+Two failure modes:
 
-**Navigation timed out or network failed** — `page.waitForNavigation` throws when the browser can't complete the navigation (network error, timeout, etc.). The `try/catch` catches this case only; it does NOT detect wrong credentials.
+**Navigation failed** — `page.waitForNavigation` throws (network error or timeout). The `try/catch` catches this only; it does NOT detect wrong credentials.
 
-**Credentials wrong** — the site rejects the login form and redirects back to `/login` (or leaves the URL unchanged). This succeeds navigationally, so the `try/catch` never fires. Detect it by checking `page.url()` after the navigation resolves.
+**Wrong credentials** — site redirects back to `/login` (navigational success, so `try/catch` never fires). Detect by checking `page.url()` after navigation resolves.
 
 ```js
 const page = await browser.newPage();
@@ -82,11 +78,9 @@ if (page.url().includes('/login')) {
 await saveSession(await page.cookies());
 ```
 
-**Login form changed** — the selector for `#username`, `#password`, or `button[type=submit]` no longer matches. This is a selector breakage, not a credentials problem. Throw with a message that names the broken selector so Trawl's AI Fix can surface it:
+**Login form changed** — selector breakage, not credentials. Throw with the broken selector name so AI Fix can surface it:
 
 ```js
 const usernameField = await page.$('#username');
 if (!usernameField) throw new Error('Login form changed — #username selector not found. Update the selector.');
 ```
-
-Surface selector breakages to AI Fix rather than silently swallowing them. A clear error message in the throw is what AI Fix uses to generate a replacement.

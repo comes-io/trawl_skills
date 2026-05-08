@@ -6,7 +6,7 @@
 
 ### Scroll to trigger lazy-load
 
-Infinite-scroll lists and lazy-loaded images require real scroll events to reveal new content. Use `window.scrollBy` in a loop, wait for new content to appear, and stop when the item count stabilises.
+Use `window.scrollBy` in a loop; wait for new content, stop when the item count stabilises.
 
 ```js
 let prev = 0;
@@ -25,13 +25,13 @@ for (let i = 0; i < 10; i++) {
 }
 ```
 
-Stop conditions: item count unchanged after a scroll, or a sentinel element appears (e.g. "end of results" banner).
+Stop when item count is unchanged after a scroll, or a "end of results" sentinel appears.
 
 ---
 
 ### Hover to reveal
 
-E-commerce pricing, tooltips, and dropdown menus often render their content only on `mouseenter`. Read the value after the hover, not before.
+Content only rendered on `mouseenter` — read the value after the hover, not before.
 
 ```js
 const HOVER_TARGET = '[data-testid="price-trigger"]';
@@ -46,7 +46,7 @@ const price = await page.$eval(REVEALED_PRICE, (el) => el.textContent.trim());
 
 ### Click to expand (FAQ, accordions, "show more")
 
-Iterate over each trigger element, click it, and wait for the expanded region to appear before reading its content.
+Click each trigger, wait for the expanded region, then read its content.
 
 ```js
 const TRIGGERS = await page.$$('[data-testid="faq-question"]');
@@ -65,7 +65,7 @@ for (const trigger of TRIGGERS) {
 
 ### Form fill via page.type()
 
-Use `page.type(selector, value)` which fires `keydown`/`keypress`/`keyup` per character. Some sites watch for paste-style instant value assignment (`el.value = ...`) and reject the form submission.
+`page.type` fires `keydown`/`keypress`/`keyup` per character. Some sites reject paste-style instant assignment (`el.value = ...`).
 
 ```js
 // Good: per-keystroke events
@@ -82,7 +82,7 @@ await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
 
 ### Wait for state transitions between chained actions
 
-After clicking a button that triggers an XHR, prefer `waitForResponse` or `waitForNetworkIdle` over a fixed delay.
+After a click that triggers an XHR, prefer `waitForResponse` or `waitForNetworkIdle` over a fixed delay.
 
 ```js
 // Good: gate on the API response
@@ -101,7 +101,7 @@ await page.waitForNetworkIdle();
 
 ### Pagination via "next" button
 
-Click the "next" button and wait for the first item of the new page to appear. Track the item set across pages to detect stale pagination (URL did not change, same items returned).
+Click "next", wait for the first item to change. Track items across pages to detect stale pagination (same items returned).
 
 ```js
 const allItems = [];

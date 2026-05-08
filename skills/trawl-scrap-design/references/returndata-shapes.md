@@ -6,7 +6,7 @@ Rules for the JSON objects you pass to `returnData([...])`.
 
 ### Flat-as-possible
 
-Return a flat object per item. Nest only when the source data is genuinely nested — and justify each nesting level with a comment.
+Return a flat object per item. Nest only when source data is genuinely nested — justify with a comment.
 
 ```js
 // Good: flat
@@ -28,7 +28,7 @@ Return a flat object per item. Nest only when the source data is genuinely neste
 
 ### null vs omission
 
-Always return `null` for optional fields that are absent. Never omit the key. Consumers and Trawl's Data Quality view distinguish "field was present but empty" from "key never sent" — the latter breaks schema validation silently.
+Return `null` for absent optional fields. Never omit the key — schema validation distinguishes "null" from "key never sent", and omission breaks it silently.
 
 ```js
 // Good
@@ -42,7 +42,7 @@ Always return `null` for optional fields that are absent. Never omit the key. Co
 
 ### Dates as ISO-8601 UTC
 
-Convert all dates to ISO-8601 UTC strings using `new Date(...).toISOString()`. Never pass locale-formatted strings (`"15 mars 2024"`, `"3/15/24"`) to downstream pipelines — they are timezone-ambiguous and locale-dependent.
+Convert dates with `new Date(...).toISOString()`. Never pass locale-formatted strings — they're timezone-ambiguous and locale-dependent.
 
 ```js
 const rawDate = await page.$eval('[data-testid="publish-date"]', (el) => el.getAttribute('datetime'));
@@ -54,7 +54,7 @@ const published_at = rawDate ? new Date(rawDate).toISOString() : null;
 
 ### Numbers as numbers
 
-Parse numeric values before returning. Return the currency as a separate string field, not embedded in the number.
+Parse before returning. Return currency as a separate string field, not embedded in the number.
 
 ```js
 const rawPrice = await page.$eval(PRICE_SEL, (el) => el.textContent.trim());
@@ -72,7 +72,7 @@ const currency = rawPrice.match(/[A-Z]{3}|[€$£¥]/)?.[0] ?? null;
 
 ### Pagination accumulates within one run
 
-When a scrap paginates, accumulate all pages into a single array and call `returnData` once at the end. Calling `returnData` once per page — or once per item — produces one history entry per call and breaks aggregation.
+Accumulate all pages into one array and call `returnData` once at the end. Calling it per-page or per-item produces one history entry per call and breaks aggregation.
 
 ```js
 const allItems = [];
@@ -86,8 +86,6 @@ returnData(allItems); // single call with all pages merged
 
 ### Compatibility with checkSchema
 
-Trawl's Data Quality feature validates `returnData` output against the schema defined on the scrap. Key points:
-
-- `validation_failed` is a distinct history status from `error` (script threw) and `0 items` (returnData called with empty array). Check all three when debugging data gaps.
-- Missing required keys surface as `validation_failed`, not `error` — they won't cause a retry.
-- See *Trawl Data Quality docs* (in-app help center) for schema definition syntax and enforcement behaviour.
+- `validation_failed` is distinct from `error` (script threw) and `0 items` (empty array). Check all three when debugging data gaps.
+- Missing required keys → `validation_failed`, not `error` — no retry triggered.
+- See *Trawl Data Quality docs* for schema syntax and enforcement.

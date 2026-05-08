@@ -4,7 +4,7 @@ title: Cookie Injection
 
 ### setCookie before goto
 
-Call `page.setCookie(...cookies)` before any `page.goto` on the target domain. Cookies set after `goto` are ignored on the first request — the browser has already sent the request headers by the time setCookie resolves.
+Call `page.setCookie(...cookies)` before `page.goto`. Cookies set after `goto` are ignored — request headers are already sent.
 
 ```js
 const page = await browser.newPage();
@@ -14,23 +14,21 @@ await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded'
 
 ### HttpOnly cookies are invisible from JS
 
-`document.cookie` does not return HttpOnly cookies. Capturing cookies by running `document.cookie` in the browser console or via `page.evaluate(() => document.cookie)` silently skips them — you get a partial set that will not authenticate the session.
+`document.cookie` and `page.evaluate(() => document.cookie)` silently skip HttpOnly cookies — the partial set won't authenticate the session. This is the most common silent failure.
 
 Capture the full cookie set via:
-- **DevTools** → Application → Cookies → select the domain → copy rows to JSON manually.
-- **A WebExtensions-based Chrome extension** that exports all cookies including HttpOnly ones. Search the Chrome Web Store: https://chromewebstore.google.com/search/cookie%20exporter — do not hard-code a specific extension name since availability changes.
-
-This is the most common silent failure when cookies are partially captured: the session cookie is set, navigation succeeds, but the site redirects back to `/login` because the authentication cookie was HttpOnly and was not included.
+- **DevTools** → Application → Cookies → select the domain → copy to JSON manually.
+- **A WebExtensions-based Chrome extension** from https://chromewebstore.google.com/search/cookie%20exporter
 
 ### Domain matching gotchas
 
-The cookie's `domain` field must match the hostname rules the site expects. There are three distinct forms:
+Three distinct forms:
 
-- `.example.com` (leading dot) — matches `example.com` and all subdomains (`www.example.com`, `api.example.com`). Most session cookies use this form.
-- `example.com` (no dot) — matches only the apex domain.
-- `www.example.com` — matches only that specific subdomain.
+- `.example.com` (leading dot) — matches apex + all subdomains. Most session cookies use this.
+- `example.com` (no dot) — apex only.
+- `www.example.com` — that subdomain only.
 
-When cookies don't apply on navigation, check the `domain` field first. Export the exact value from DevTools rather than guessing.
+When cookies don't apply, check `domain` first. Export the exact value from DevTools.
 
 ```json
 [
@@ -47,9 +45,7 @@ When cookies don't apply on navigation, check the `domain` field first. Export t
 
 ### localStorage / sessionStorage parallel save
 
-Many sites store JWTs or auth tokens in `localStorage`, not cookies. The browser's cookie jar can be fully correct, yet the site still redirects to `/login` because it also checks `localStorage`.
-
-Detection signal: navigation succeeds (no network error, page loads), but the page immediately redirects to `/login` despite valid cookies being set.
+Some sites store JWTs in `localStorage`, not cookies. Detection signal: navigation succeeds but immediately redirects to `/login` despite valid cookies.
 
 Capture localStorage from a logged-in session:
 
@@ -70,32 +66,30 @@ await page.reload({ waitUntil: 'domcontentloaded' });
 
 ### Cookies don't persist across worker runs except via Trawl session
 
-The worker starts a fresh browser context on each run. Any cookies set inside the script are gone when the run ends. Persistence is only achieved via:
+The worker starts a fresh browser context on each run. Persistence requires:
 
-- `saveSession(await page.cookies())` in the Trawl-managed flow (stores encrypted at rest, exposes as `account.session.cookies` next run).
-- The flavour B persistence endpoint (cookies pushed externally into `account.session.cookies`).
+- `saveSession(await page.cookies())` — stores encrypted, exposed as `account.session.cookies` next run.
+- Flavour B persistence endpoint — cookies pushed externally.
 
-Flavour A (embedded cookies) relies on cookies being re-injected from the script source on every run.
+Flavour A re-injects cookies from the script source on every run.
 
 ### Exporting cookies from Chrome — walkthrough
 
-1. Open Chrome and log in to the target site normally.
-2. Open DevTools (F12 or Cmd+Opt+I).
-3. Go to Application → Storage → Cookies → select the target domain.
-4. All cookies are listed, including HttpOnly ones (marked with a checkmark in the HttpOnly column).
-5. Copy the values manually to a JSON array matching the Puppeteer `CookieParam` shape (`name`, `value`, `domain`, `path`, `httpOnly`, `secure`).
+1. Log in to the target site in Chrome.
+2. Open DevTools → Application → Storage → Cookies → select the domain.
+3. Copy values to a JSON array matching `CookieParam` shape (`name`, `value`, `domain`, `path`, `httpOnly`, `secure`).
 
-Alternatively, use a WebExtensions-based cookie-export extension from the Chrome Web Store: https://chromewebstore.google.com/search/cookie%20exporter
+Or use a cookie-export extension: https://chromewebstore.google.com/search/cookie%20exporter
 
 ### Storage state expiry
 
-Signs that cookies have expired:
-- Navigation lands on `/login` or a redirect to the identity provider.
-- First protected request returns a 401 or 403.
-- The page loads but user-specific data is absent (the site silently fell back to a guest view).
+Signs of expired cookies:
+- Navigation lands on `/login` or identity-provider redirect.
+- First protected request returns 401 or 403.
+- Page loads but user-specific data is absent (silent guest view).
 
-Refresh strategy:
+Refresh:
 1. Log in locally in a fresh Chrome session.
-2. Export the new cookies using the walkthrough above.
-3. Re-upload via flavour B persistence endpoint, or update the embedded array (flavour A).
-4. For the Trawl-managed flow: run `trawl scraps account clear-session <id>` to force a re-login on the next run (see `trawl-cli` skill).
+2. Export new cookies (walkthrough above).
+3. Re-upload via flavour B, or update the embedded array (flavour A).
+4. Trawl-managed flow: `trawl scraps account clear-session <id>` to force re-login on next run.

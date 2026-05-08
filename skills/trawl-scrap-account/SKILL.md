@@ -1,6 +1,6 @@
 ---
 name: trawl-scrap-account
-description: Use when scraping a site that requires authentication. Covers Trawl-managed credentials (account.username/password + saveSession()), BYO-cookies injection (when you don't want to give credentials to Trawl), and the trade-offs between embedded vs persisted cookies. Triggers on "scrape an authenticated site", "behind login", "I don't want to give my credentials to Trawl", "inject cookies", "session", "MFA". Does NOT cover CLI account management (see trawl-cli), general script structure (see trawl-scrap-design), or local test runs (see trawl-scrap-local-test).
+description: Use when scraping a site that requires authentication. Triggers on "scrape an authenticated site", "behind login", "I don't want to give my credentials to Trawl", "inject cookies", "reuse a session", "MFA", or any prompt about cookies/sessions on Trawl. Does NOT cover CLI account management (see trawl-cli), general script structure (see trawl-scrap-design), or local test runs (see trawl-scrap-local-test).
 ---
 
 # Trawl Scrap Account

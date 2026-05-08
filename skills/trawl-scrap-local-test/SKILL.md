@@ -25,6 +25,13 @@ node ~/.claude/skills/trawl-scrap-local-test/scripts/run-local.mjs path/to/scrap
   --params=key=val,key2=val2
 ```
 
+```bash
+# Headless run (CI / no display):
+node ~/.claude/skills/trawl-scrap-local-test/scripts/run-local.mjs path/to/scrap.js \
+  --url=https://target \
+  --headless
+```
+
 ## Harness contract
 
 The script body runs in a closure. The harness injects these globals, mirroring the worker:
@@ -45,6 +52,8 @@ No changes to the script body are needed to run it locally.
 - `--account-password=<p>` — sets `account.password`.
 - `--account-cookies=<path>` — loads `account.session.cookies` from a JSON array file.
 - `--remote` — connects to an existing Chrome at `http://127.0.0.1:9222` (instead of launching a fresh one). Useful for MFA flows — see `references/headed-debug.md`.
+- `--headless` — launches Chrome headlessly (no window). Default is headed (`headless: false`) for interactive debugging.
+- `--chrome=<path>` — path to a Chrome executable. Auto-detected on macOS and Linux when omitted; pass explicitly if Chrome lives in a non-standard location or you want to use Chromium.
 - `--help` — prints usage.
 
 ## Recommended workflow

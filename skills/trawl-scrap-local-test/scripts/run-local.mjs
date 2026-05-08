@@ -84,15 +84,23 @@ let browser;
 if (flags.remote) {
   browser = await puppeteer.default.connect({ browserURL: 'http://127.0.0.1:9222' });
 } else {
-  const chromePath = (typeof flags.chrome === 'string' ? flags.chrome : null) || findChrome();
-
-  if (!chromePath) {
-    console.error('No Chrome executable found. Install Chrome or pass --chrome=/path/to/chrome');
-    process.exit(1);
+  let executablePath;
+  if (typeof flags.chrome === 'string') {
+    if (!existsSync(flags.chrome)) {
+      console.error(`Chrome not found at: ${flags.chrome}`);
+      process.exit(1);
+    }
+    executablePath = flags.chrome;
+  } else {
+    executablePath = findChrome();
+    if (!executablePath) {
+      console.error('No Chrome executable found. Install Chrome or pass --chrome=/path/to/chrome');
+      process.exit(1);
+    }
   }
 
   browser = await puppeteer.default.launch({
-    executablePath: chromePath,
+    executablePath,
     headless: flags.headless ? 'new' : false,
     slowMo: flags.headless ? 0 : 250,
     devtools: !flags.headless,

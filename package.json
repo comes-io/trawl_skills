@@ -15,6 +15,12 @@
   "engines": {
     "node": ">=18"
   },
+  "peerDependencies": {
+    "puppeteer-core": "^22.0.0"
+  },
+  "peerDependenciesMeta": {
+    "puppeteer-core": { "optional": true }
+  },
   "scripts": {
     "install-skill": "node bin/install.js"
   },

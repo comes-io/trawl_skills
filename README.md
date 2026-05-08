@@ -35,7 +35,7 @@ npx @trawlme/skills install --local
 Install a specific skill only:
 
 ```bash
-npx @trawlme/skills install trawl
+npx @trawlme/skills install trawl-cli
 ```
 
 ### Option 2 — via the Trawl CLI
@@ -78,7 +78,7 @@ trawlme-skills help                             Print usage
 
 ## Prerequisites
 
-The `trawl` skill assumes `@trawlme/cli` is installed and the user is authenticated:
+The `trawl-cli` skill assumes `@trawlme/cli` is installed and the user is authenticated:
 
 ```bash
 npm install -g @trawlme/cli

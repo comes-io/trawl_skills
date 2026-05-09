@@ -61,14 +61,15 @@ trawl scraps data <id> --json              # last run output (the scraped data)
 
 ```bash
 trawl scraps create -t "Daily prices" -u "https://example.com/products" \
-  -r '<puppeteer script>' -s puppeteer
+  -d "Tracks product prices on Example.com daily" \
+  -r '<puppeteer script>'
 ```
 
 Flags:
 - `-t, --title` (required) — display name
 - `-u, --url` — target URL (also exposed as `TRAWL.url` in the script)
+- `-d, --description` — what the scrap does (used by wizard few-shot examples + future marketplace listing)
 - `-r, --request` — the Puppeteer script body (must call `returnData(arr)`)
-- `-s, --scrapper` — engine, defaults to `puppeteer`
 
 For the script body, see the `trawl-scrap-design` skill.
 
@@ -76,6 +77,7 @@ For the script body, see the `trawl-scrap-design` skill.
 
 ```bash
 trawl scraps update <id> -t "New title" --cron "0 9 * * *"
+trawl scraps update <id> -d "Updated description"           # update what it does
 trawl scraps update <id> --no-cron               # disable schedule
 trawl scraps update <id> --alert ops@example.com # email on failure
 trawl scraps update <id> --no-alert              # disable alerts
@@ -118,7 +120,7 @@ trawl scraps watch <id>     # if running, see live errors
 
 **"Create a job that runs every morning"**
 ```bash
-trawl scraps create -t "Morning crawl" -u "https://..." -r '...' -s puppeteer
+trawl scraps create -t "Morning crawl" -u "https://..." -d "Daily crawl at 8am" -r '...'
 trawl scraps update <new-id> --cron "0 8 * * *"
 ```
 
@@ -136,6 +138,7 @@ Scrap object shape:
 {
   "_id": "507f1f77bcf86cd799439011",
   "title": "...",
+  "description": "What this scrap does",
   "url": "https://...",
   "request": "var page = ...",
   "scrapper": "puppeteer",

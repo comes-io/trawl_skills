@@ -120,7 +120,7 @@ trawl scraps watch <id>     # if running, see live errors
 
 **"Create a job that runs every morning"**
 ```bash
-trawl scraps create -t "Morning crawl" -u "https://..." -r '...' -s puppeteer
+trawl scraps create -t "Morning crawl" -u "https://..." -d "Daily crawl at 8am" -r '...'
 trawl scraps update <new-id> --cron "0 8 * * *"
 ```
 

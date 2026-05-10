@@ -41,7 +41,7 @@ The `${siteName^}_logo.svg` heuristic (capitalize first letter) fails for compou
 | github | `GitHub_logo_2013.svg` (icon-only: `GitHub_Invertocat_Logo.svg`) |
 | reddit | `Reddit_logo_new.svg` |
 | youtube | `YouTube_Logo_2017.svg` |
-| linkedin | `LinkedIn_logo_initials.png` |
+| linkedin | `LinkedIn_logo_initials.png` (PNG — save as `-logo.png`, adjust `{{LOGO_PATH}}` in template) |
 | twitter | `Logo_of_Twitter.svg` (X rebrand: `X_logo_2023.svg`) |
 | yahoo-finance | `Yahoo!_Finance_logo_2021.svg` |
 | amazon | `Amazon_logo.svg` |

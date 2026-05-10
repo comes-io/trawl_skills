@@ -23,18 +23,24 @@ Skip for internal/non-discoverable scraps (no UI surface).
 
 ### 1. Fetch logo
 
-Search Wikimedia Commons for the official brand SVG:
+Search Wikimedia Commons for the official brand SVG. Sanitize `siteName` first — no `/` or special chars (alphanumeric + hyphens only).
 
 ```bash
-# API search — most reliable
-curl -s "https://en.wikipedia.org/w/api.php?action=query&titles=File:${SiteName}_logo.svg&prop=imageinfo&iiprop=url&format=json" \
-  -H "User-Agent: Mozilla/5.0" | jq -r '.query.pages[].imageinfo[0].url' \
+# Canonical Commons API (not Wikipedia) — broadest logo coverage
+SITE_TITLE="${siteName^}_logo.svg"   # capitalize first letter: ebay → Ebay_logo.svg
+curl -s "https://commons.wikimedia.org/w/api.php?action=query&titles=File:${SITE_TITLE}&prop=imageinfo&iiprop=url&format=json" \
+  -H "User-Agent: Mozilla/5.0" | jq -r '.query.pages | to_entries[0].value.imageinfo[0].url // empty' \
   > /tmp/${siteName}-logo-url.txt
+```
+
+If the URL is empty, try common naming variants manually:
+- `EBay_logo.svg` (original casing), `Google_G_logo.svg`, `Reddit_logo.svg`
+- PNG fallback via thumb endpoint: `https://upload.wikimedia.org/wikipedia/commons/thumb/.../1200px-....png`
+
+```bash
 # Download
 curl -sL -H "User-Agent: Mozilla/5.0" "$(cat /tmp/${siteName}-logo-url.txt)" -o /tmp/${siteName}-logo.svg
 ```
-
-PNG fallback: `https://upload.wikimedia.org/wikipedia/commons/thumb/.../1200px-....png` (thumb endpoint) if SVG unavailable.
 
 **Always use `User-Agent: Mozilla/5.0`** — Wikimedia rejects empty UAs.
 
@@ -49,13 +55,14 @@ Pastel = target brand color at 10–15% saturation. Example: eBay red `#e53238` 
 
 ### 3. Compose HTML
 
-Copy `references/banner-template.html` to `/tmp/${siteName}-banner.html`. Substitute:
+Copy `references/banner-template.html` to `/tmp/${siteName}-banner.html`. Make three substitutions (all at once — no nested placeholders remain after this step):
 - `{{LOGO_PATH}}` → `file:///tmp/${siteName}-logo.svg`
-- `{{BG_GRADIENT}}` → the gradient string (step 2)
-- `{{TAGLINE_BLOCK}}` → `<div class="tagline">{{TAGLINE}}</div>` or empty string
+- `{{BG_GRADIENT}}` → the gradient string from step 2 (e.g. `linear-gradient(135deg, #ffeaec 0%, #e0efff 100%)`)
+- `{{TAGLINE_BLOCK}}` → `<div class="tagline">Comp pricing · Item watchlist</div>` — substitute the literal tagline text directly, or use an empty string if no tagline
 
 ### 4. Render via Chrome headless
 
+macOS:
 ```bash
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
   --headless=new --disable-gpu --hide-scrollbars \
@@ -64,7 +71,7 @@ Copy `references/banner-template.html` to `/tmp/${siteName}-banner.html`. Substi
   file:///tmp/${siteName}-banner.html
 ```
 
-Fallback: `chromium --remote-debugging-port=9223 --headless=new ...` if Chrome.app missing.
+Linux / CI: replace with `google-chrome` or `chromium-browser` (same flags). On K8s workers, `chromium --headless=new ...` works if `chromium` is in PATH.
 
 ### 5. Upload
 

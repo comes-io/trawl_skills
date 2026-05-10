@@ -33,9 +33,24 @@ curl -s "https://commons.wikimedia.org/w/api.php?action=query&titles=File:${SITE
   > /tmp/${siteName}-logo-url.txt
 ```
 
-If the URL is empty, try common naming variants manually:
-- `EBay_logo.svg` (original casing), `Google_G_logo.svg`, `Reddit_logo.svg`
-- PNG fallback via thumb endpoint: `https://upload.wikimedia.org/wikipedia/commons/thumb/.../1200px-....png`
+The `${siteName^}_logo.svg` heuristic (capitalize first letter) fails for compound brands. Use the table below first:
+
+| siteName | Wikimedia file |
+|---|---|
+| ebay | `EBay_logo.svg` |
+| github | `GitHub_logo_2013.svg` (icon-only: `GitHub_Invertocat_Logo.svg`) |
+| reddit | `Reddit_logo_new.svg` |
+| youtube | `YouTube_Logo_2017.svg` |
+| linkedin | `LinkedIn_logo_initials.png` |
+| twitter | `Logo_of_Twitter.svg` (X rebrand: `X_logo_2023.svg`) |
+| yahoo-finance | `Yahoo!_Finance_logo_2021.svg` |
+| amazon | `Amazon_logo.svg` |
+| tripadvisor | `Tripadvisor_logoCMYK.svg` |
+| google | `Google_2015_logo.svg` |
+| tiktok | `TikTok_logo.svg` |
+| booking | `Booking.com_logo.svg` |
+
+If the brand is not in the table, try the `${siteName^}_logo.svg` heuristic, then PNG fallback via thumb endpoint: `https://upload.wikimedia.org/wikipedia/commons/thumb/.../1200px-....png`
 
 ```bash
 # Download
@@ -43,6 +58,11 @@ curl -sL -H "User-Agent: Mozilla/5.0" "$(cat /tmp/${siteName}-logo-url.txt)" -o 
 ```
 
 **Always use `User-Agent: Mozilla/5.0`** — Wikimedia rejects empty UAs.
+
+#### Fallback sources when Wikimedia misses
+
+1. **simpleicons.org CDN** — `https://cdn.simpleicons.org/{slug}` — mono-color SVG with brand color baked in. Works for LinkedIn, GitHub, Twitter. Unsuitable for multi-color logos (eBay, Google).
+2. **Brand press kit** — last resort: search `{brand}.com/press` or `{brand}.com/about/brand` for official SVG/PNG downloads.
 
 ### 2. Pick background gradient
 
@@ -58,7 +78,7 @@ Pastel = target brand color at 10–15% saturation. Example: eBay red `#e53238` 
 Copy `references/banner-template.html` to `/tmp/${siteName}-banner.html`. Make three substitutions (all at once — no nested placeholders remain after this step):
 - `{{LOGO_PATH}}` → `file:///tmp/${siteName}-logo.svg`
 - `{{BG_GRADIENT}}` → the gradient string from step 2 (e.g. `linear-gradient(135deg, #ffeaec 0%, #e0efff 100%)`)
-- `{{TAGLINE_BLOCK}}` → `<div class="tagline">Comp pricing · Item watchlist</div>` — substitute the literal tagline text directly, or use an empty string if no tagline
+- `{{TAGLINE_BLOCK}}` → `<div class="tagline">Comp pricing · Item watchlist</div>` — substitute the literal tagline text directly. When no tagline: replace with `""` (empty string — leave the placeholder line blank, the surrounding HTML renders cleanly)
 
 ### 4. Render via Chrome headless
 

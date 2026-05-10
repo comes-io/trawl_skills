@@ -8,6 +8,8 @@
   },
   "files": [
     "skills/**/*.md",
+    "skills/**/*.html",
+    "skills/**/references/**",
     "skills/**/run-local.mjs",
     "bin/install.js",
     "README.md",

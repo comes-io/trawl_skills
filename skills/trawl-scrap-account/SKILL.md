@@ -78,11 +78,17 @@ await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded'
 
 ## Flavour B — Persisted BYO-cookies
 
-Export cookies from a logged-in browser session and push them into `account.session.cookies` via the Trawl API persistence endpoint. The worker encrypts them at rest; the script reads the same global as the managed flow:
+Export cookies from a logged-in browser session. Three write paths exist for `account.session.cookies` (any one is fine; the scrap source reads them back identically):
+
+- **UI** (one-off / interactive): scrap settings drawer → Account section → **Upload session cookies** → paste a Puppeteer cookie JSON array → Save.
+- **CLI** (scripted / batch): `trawl scraps account session set <scrap-id> --cookies <file>` (npm `@trawlme/cli` ≥ 1.14.0).
+- **API** (custom tooling): `PUT /api/scraps/:scrapId/account/session` with body `{ cookies: [...] }`.
+
+The worker encrypts them at rest; the script reads the same global as the managed flow:
 
 ```js
 if (!account.session?.cookies) {
-  throw new Error('Flavour B requires account.session.cookies — push them via the persistence endpoint first.');
+  throw new Error('Flavour B requires account.session.cookies — push them via UI / CLI / API first.');
 }
 
 const page = await browser.newPage();
@@ -90,7 +96,7 @@ await page.setCookie(...account.session.cookies);
 await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
 ```
 
-Requires the persistence endpoint to be live (check Trawl API reference). See `references/cookie-injection.md` for domain matching, HttpOnly export, localStorage, and expiry handling.
+See `references/cookie-injection.md` for domain matching, HttpOnly export, localStorage, and expiry handling.
 
 ## Anti-patterns to avoid
 

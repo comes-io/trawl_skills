@@ -19,7 +19,7 @@ Injecting cookies does not change the worker's fingerprint policy.
 
 2. **One-shot test or short-lived experiment, or you want to verify your cookies work before setting up persistence** → use **Flavour A — Embedded BYO-cookies**. Hard-code the cookie array directly in the script body. Accepts the trade-off that cookies are in plain text in the script source.
 
-3. **MFA, SSO, OAuth, or you don't want to hand credentials to Trawl** → use **Flavour B — Persisted BYO-cookies**. Export cookies from a logged-in browser session, push them into `account.session.cookies` via the Trawl API persistence endpoint, and the script reads them back before navigation. Cookies are encrypted at rest.
+3. **MFA, SSO, OAuth, or you don't want to hand credentials to Trawl** → use **Flavour B — Persisted BYO-cookies**. Export cookies from a logged-in browser session, push them into `account.session.cookies` via UI, CLI, or API, and the script reads them back before navigation. Cookies are encrypted at rest.
 
 ## Trawl-managed credentials (legacy flow)
 

@@ -81,9 +81,13 @@ trawl scraps update <id> -d "Updated description"           # update what it doe
 trawl scraps update <id> --no-cron               # disable schedule
 trawl scraps update <id> --alert ops@example.com # email on failure
 trawl scraps update <id> --no-alert              # disable alerts
+trawl scraps update <id> --autofix               # enable AI Fix (auto-repair on failure) — @trawlme/cli@1.11.0+
+trawl scraps update <id> --no-autofix            # disable AI Fix
 trawl scraps update <id> -p '{"key":"page","value":"2"}'    # add a param (JSON object)
 trawl scraps update <id> --params-file ./params.json        # bulk params from file
 ```
+
+> **GTM seed scraps:** always run `trawl scraps update <id> --autofix --cron '0 0 * * 0'` post-create (weekly schedule + AI Fix enabled).
 
 ### Run / trigger / watch
 

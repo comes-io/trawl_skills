@@ -19,7 +19,7 @@ Injecting cookies does not change the worker's fingerprint policy.
 
 2. **One-shot test or short-lived experiment, or you want to verify your cookies work before setting up persistence** → use **Flavour A — Embedded BYO-cookies**. Hard-code the cookie array directly in the script body. Accepts the trade-off that cookies are in plain text in the script source.
 
-3. **MFA, SSO, OAuth, or you don't want to hand credentials to Trawl** → use **Flavour B — Persisted BYO-cookies**. Export cookies from a logged-in browser session, push them into `account.session.cookies` via the Trawl API persistence endpoint, and the script reads them back before navigation. Cookies are encrypted at rest.
+3. **MFA, SSO, OAuth, or you don't want to hand credentials to Trawl** → use **Flavour B — Persisted BYO-cookies**. Export cookies from a logged-in browser session, push them into `account.session.cookies` via UI, CLI, or API, and the script reads them back before navigation. Cookies are encrypted at rest.
 
 ## Trawl-managed credentials (legacy flow)
 
@@ -78,11 +78,17 @@ await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded'
 
 ## Flavour B — Persisted BYO-cookies
 
-Export cookies from a logged-in browser session and push them into `account.session.cookies` via the Trawl API persistence endpoint. The worker encrypts them at rest; the script reads the same global as the managed flow:
+Export cookies from a logged-in browser session. Three write paths exist for `account.session.cookies` (any one is fine; the scrap source reads them back identically):
+
+- **UI** (one-off / interactive): scrap settings drawer → Account section → **Upload session cookies** → paste a Puppeteer cookie JSON array → Save.
+- **CLI** (scripted / batch): `trawl scraps account session set <scrap-id> --cookies <file>` (npm `@trawlme/cli` ≥ 1.14.0).
+- **API** (custom tooling): `PUT /api/scraps/:scrapId/account/session` with body `{ cookies: [...] }`.
+
+The worker encrypts them at rest; the script reads the same global as the managed flow:
 
 ```js
 if (!account.session?.cookies) {
-  throw new Error('Flavour B requires account.session.cookies — push them via the persistence endpoint first.');
+  throw new Error('Flavour B requires account.session.cookies — push them via UI / CLI / API first.');
 }
 
 const page = await browser.newPage();
@@ -90,7 +96,7 @@ await page.setCookie(...account.session.cookies);
 await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
 ```
 
-Requires the persistence endpoint to be live (check Trawl API reference). See `references/cookie-injection.md` for domain matching, HttpOnly export, localStorage, and expiry handling.
+See `references/cookie-injection.md` for domain matching, HttpOnly export, localStorage, and expiry handling.
 
 ## Anti-patterns to avoid
 

@@ -33,6 +33,12 @@ const ADD_TO_CART_SEL = '[role="button"][aria-label="Add to cart"]';
 const price = await page.$eval(PRICE_SEL, (el) => el.textContent.trim());
 ```
 
+**Avoid obfuscated hash classes** (`css-1a2b3c`, styled-components like `fPSBzf`) — they rotate every deploy. When the only classes are hashes:
+- prefer `data-*` / `aria-*` / `role` / semantic tags (`<article>`, `<address>`) / `time[datetime]`
+- module-CSS (stable prefix + hash suffix) → match the prefix: `[class*="ListingCard_price"]`
+- `aria-label` often encodes the value (`[aria-label*="Current price"]`) — more stable than any class
+- **JSON beats DOM**: `window.__NEXT_DATA__` (Next.js SSR) and JSON-LD (`script[type="application/ld+json"]`, schema.org) carry the data pre-render — use as primary, DOM as fallback.
+
 ## Waits
 
 - **`page.waitForSelector(selector)`** — most targeted; use as the default.
@@ -88,6 +94,8 @@ if (!category) throw new Error('Missing required param: category (set in Setting
 await page.goto(url, { waitUntil: 'domcontentloaded' });
 ```
 
+**URL hygiene**: a page can return HTTP 200 with a soft-404 ("page not found") body — verify *content*, not status. Prefer search/category URLs over guessed deep-link IDs (product/hotel IDs go stale). Pre-wire locale in the URL (`/en/`, `intl=nosplash`, country path) to skip region splashes.
+
 ## Resilience
 
 Wrap each logical field in its own `try/catch` and return what you have. Throw only for structural failures that make the entire run meaningless.
@@ -101,15 +109,18 @@ try {
   // continue — return partial data with price: null
 }
 
-// Structural failure: the page never loaded — throw so the worker retries / escalates
-const bodyText = await page.$eval('body', (el) => el.textContent);
-if (bodyText.includes('Access Denied')) throw new Error('Access denied — escalate proxy tier');
+// Structural failure: required param missing — throw immediately
+// Do NOT sniff for bot-challenge markers ("Access Denied", "Just a moment") — see anti-patterns.md
 ```
 
 **Throw only for:**
 - Auth missing (session cookie expired, login redirect)
 - Page never loaded or returned a fatal error
 - Required param missing
+
+## Hard anti-bot sites
+
+The platform auto-escalates proxy tiers when a run comes back empty — you usually don't manage tiers at all. For a site you *know* is heavily protected, you can pin a higher tier from the start so the first run doesn't waste a cycle; the top tier passes most protections. That's the whole knob. Don't try to outsmart protection in your script — return what you can and let the platform escalate.
 
 ## Anti-patterns (don't do this)
 

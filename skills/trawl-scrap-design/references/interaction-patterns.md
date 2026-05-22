@@ -4,6 +4,29 @@
 
 ---
 
+## Dismiss first-visit interstitials (before the content wait)
+
+Consent (GDPR) modals and language/region splashes block the content `waitForSelector`. Dismiss FIRST, then wait for cards.
+
+```js
+// click the consent/region button by text, then let the page settle
+await page.evaluate(() => {
+  const rx = /^(accept all|allow all|agree|tout accepter|united states|continue)/i;
+  const b = [...document.querySelectorAll('button,[role="button"],a')]
+    .find(el => rx.test((el.textContent||'').trim()) && el.offsetParent);
+  if (b) b.click();
+});
+await page.waitForNetworkIdle({ idleTime: 800, timeout: 8000 }).catch(() => {});
+```
+
+---
+
+## waitUntil: 'load' for redirect-heavy pages
+
+`domcontentloaded` can fire before a post-load redirect settles → `page.evaluate` throws "execution context destroyed". Use `waitUntil:'load'` when the URL changes after navigation (auth/locale redirects).
+
+---
+
 ## Scroll to trigger lazy-load
 
 Use `window.scrollBy` in a loop; wait for new content, stop when the item count stabilises.

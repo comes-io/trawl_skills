@@ -56,6 +56,12 @@ Source: [rebrowser.net/blog/xpath-vs-css-selectors-a-comprehensive-guide-for-web
 
 ---
 
+## Don't detect bot-challenges in your script
+
+Do NOT sniff for challenge markers to throw — e.g. `if (html.includes('px-captcha')) throw …` or checking for "Just a moment" / "Access Denied". Two reasons: (1) it **false-throws on pages that actually loaded** (the marker can be present in benign markup, or the challenge already cleared), killing good runs; (2) it isn't your job — the platform handles bot-detection and auto-escalates on empty results. **Throw only on structural failure** (required param missing, page genuinely never loaded). If the content selector times out, return what you have (often `[]`) and let the platform escalate.
+
+---
+
 ## No silent catch on data writes
 
 Never swallow extraction errors silently:

@@ -131,6 +131,7 @@ Full detail in `references/anti-patterns.md`. Summary:
 - No `waitForTimeout(N)` — deprecated and flaky.
 - No deep CSS chains (`div > div > div > span`) — break on every redesign.
 - No random jitter as anti-bot defence — detection happens at fingerprint level before timing matters.
+- No bot-challenge detection or vendor-string sniffing (e.g. `if (html.includes('px-captcha'))`) — false-throws on pages that actually loaded. Throw only on structural failures.
 - No silent `.catch(() => {})` around data extraction.
 
 ## Interaction patterns (when the page needs them)

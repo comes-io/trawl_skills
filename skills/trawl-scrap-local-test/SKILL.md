@@ -62,6 +62,15 @@ No changes to the script body are needed to run it locally.
 2. `trawl scraps update <id> -r "$(cat scrap.js)"` (see the `trawl-cli` skill for full CLI usage).
 3. `trawl scraps run <id> --watch` to confirm the worker behaves the same.
 
+## Headless vs headed-remote — which to trust
+
+- `--headless` tests script wiring fast, but its automation fingerprint trips bot-walls that a real browser never sees → **false `len=0`**. Do not conclude "this site is walled" from a headless empty result.
+- To validate **selectors + returnData logic** under a real fingerprint, run `--remote` against a manually-launched Chrome (no `--enable-automation` flag): `--remote-debugging-port=9222 --user-data-dir=/tmp/chrome-trawl`, then `run-local.mjs scrap.js --remote`. This is the truth signal for *script logic* (not the worker network surface).
+
+## `len=0` is ambiguous — classify, don't assume "wall"
+
+An empty result has 5 causes: real bot-wall · first-visit interstitial (consent/region) · wrong/stale selector on a page that renders fine (most common) · dead/wrong URL (soft-404 — `curl 200` ≠ content exists) · auth wall. **Capture the page title + a screenshot + visible body text and read it** before deciding — the title usually reveals which. `page.screenshot()` + `document.title` + `body.innerText.slice(0,600)`.
+
 ## Limitations (intentional)
 
 - Local runs use the user's IP — no proxy tier, no fingerprint policy.

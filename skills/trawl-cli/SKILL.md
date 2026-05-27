@@ -118,11 +118,16 @@ trawl scraps data "$ID" --json
 
 **"Why did this scrap fail?"**
 ```bash
-trawl scraps doctor <id>               # last-run diagnosis: error, failed selector, block status, empty-context
-trawl scraps data <id> --errors        # same, inline with the data command
+trawl scraps doctor <id>                          # last-run diagnosis: status/statusDetail, error message, failed selector, block status, empty-context, proxy Tier (0-4), regression, autofix summary
+trawl scraps doctor <id> --autofix                # same + full autofix diff/dry-run/knowledge inline
+trawl scraps doctor <id> --json                   # raw run + autofix JSON
+trawl scraps autofix <id>                         # full last auto-fix attempt: decision, unified fix diff, dry-run X/Y, knowledge fingerprint + confidence%
+trawl scraps autofix <id> --json                  # raw autofix JSON
+trawl scraps data <id> --errors                   # failure diagnostics inline with the data command
 trawl scraps snapshot <id> --error -o /tmp/error.html   # download the error-path HTML
+trawl scraps snapshot <id> -o /tmp/page.html      # download the captured page HTML
 ```
-Note: the CLI exposes run diagnostics (`errorMessage`, `errorSnapshot.selector`, `emptyContext`, `blocked`) but **not** cost or proxy-vendor internals — those are admin-only by design.
+Note: the CLI surfaces the abstract proxy Tier (0–4) + diagnostics + autofix, but **not** cost or proxy nature/IP/vendor — those are admin-only by design.
 
 **"Create a job that runs every morning"**
 ```bash

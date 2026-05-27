@@ -122,7 +122,7 @@ trawl scraps doctor <id>               # last-run diagnosis: error, failed selec
 trawl scraps data <id> --errors        # same, inline with the data command
 trawl scraps snapshot <id> --error -o /tmp/error.html   # download the error-path HTML
 ```
-Note: the CLI exposes run diagnostics (`errorMessage`, `errorSnapshot.selector`, `emptyContext`, `blocked`) but **not** proxy-tier or cost internals — those are admin-only by design.
+Note: the CLI exposes run diagnostics (`errorMessage`, `errorSnapshot.selector`, `emptyContext`, `blocked`) but **not** cost or proxy-vendor internals — those are admin-only by design.
 
 **"Create a job that runs every morning"**
 ```bash

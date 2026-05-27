@@ -85,7 +85,7 @@ trawl scraps doctor <id>                          # last-run error + failed sele
 trawl scraps snapshot <id> --error -o /tmp/err.html  # download the error-path page HTML
 ```
 
-These commands surface what the worker captured (same info as the web frontend's "Last run" panel) without exposing proxy-tier or cost internals.
+These commands surface what the worker captured (same info as the web frontend's "Last run" panel) without exposing cost or proxy-vendor internals.
 
 ## What this skill does NOT cover
 

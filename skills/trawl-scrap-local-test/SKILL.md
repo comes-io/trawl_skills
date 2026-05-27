@@ -81,7 +81,8 @@ An empty result has 5 causes: real bot-wall · first-visit interstitial (consent
 To diagnose a *prod* failure (vs debugging locally), use the CLI instead of re-running blind:
 
 ```bash
-trawl scraps doctor <id>                          # last-run error + failed selector + block status
+trawl scraps doctor <id>                          # last-run error + failed selector + block status + autofix summary
+trawl scraps autofix <id>                         # full auto-fix detail: decision, diff, dry-run, knowledge consulted
 trawl scraps snapshot <id> --error -o /tmp/err.html  # download the error-path page HTML
 ```
 

@@ -118,9 +118,11 @@ trawl scraps data "$ID" --json
 
 **"Why did this scrap fail?"**
 ```bash
-trawl scraps get <id> --json | jq '.lastRun'
-trawl scraps watch <id>     # if running, see live errors
+trawl scraps doctor <id>               # last-run diagnosis: error, failed selector, block status, empty-context
+trawl scraps data <id> --errors        # same, inline with the data command
+trawl scraps snapshot <id> --error -o /tmp/error.html   # download the error-path HTML
 ```
+Note: the CLI exposes run diagnostics (`errorMessage`, `errorSnapshot.selector`, `emptyContext`, `blocked`) but **not** cost or proxy-vendor internals — those are admin-only by design.
 
 **"Create a job that runs every morning"**
 ```bash

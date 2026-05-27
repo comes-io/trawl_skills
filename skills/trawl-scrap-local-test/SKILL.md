@@ -76,6 +76,17 @@ An empty result has 5 causes: real bot-wall · first-visit interstitial (consent
 - Local runs use the user's IP — no proxy tier, no fingerprint policy.
 - Local pass does not guarantee worker pass — script logic is tested, not the network surface.
 
+## Diagnosing prod failures
+
+To diagnose a *prod* failure (vs debugging locally), use the CLI instead of re-running blind:
+
+```bash
+trawl scraps doctor <id>                          # last-run error + failed selector + block status
+trawl scraps snapshot <id> --error -o /tmp/err.html  # download the error-path page HTML
+```
+
+These commands surface what the worker captured (same info as the web frontend's "Last run" panel) without exposing proxy-tier or cost internals.
+
 ## What this skill does NOT cover
 
 - Script body → `trawl-scrap-design`

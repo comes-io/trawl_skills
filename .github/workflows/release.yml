@@ -22,7 +22,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          # Pinned: the `lts/*` alias intermittently fails to resolve on hosted
+          # runners ("Unable to find LTS release '*'"). 22 is current LTS; engines >=18.
+          node-version: '22'
 
       - name: Semantic Release
         id: semantic

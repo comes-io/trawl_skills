@@ -15,6 +15,8 @@ Local testing intentionally uses vanilla `puppeteer-core` — no fingerprint pol
 
 ## Quick-start
 
+Paths below assume the default install location (`~/.claude/skills/`); adjust if the skill lives elsewhere (project `.claude/skills/`, a plugin cache, etc.).
+
 ```bash
 # Install puppeteer-core once (it's a peer dependency, not bundled with the skill).
 npm install -g puppeteer-core

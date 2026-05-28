@@ -1,11 +1,11 @@
 ---
 name: trawl-scrap-banner
-description: Generate + upload a brand-aware banner (1200x630 PNG) for a Trawl scrap. Fetches the official brand logo from Wikimedia Commons, composes against a gradient or flat brand-color background, renders via Chrome headless, uploads via `trawl scraps banner`. Triggers on "make banner for my scrap", "generate scrap banner", "upload banner for {site}". Does NOT cover scrap script generation (see trawl-scrap-design) or CLI account management (see trawl-cli).
+description: Generate + upload a brand-aware banner (1200x630 PNG) for a Trawl scrap. Triggers on "make banner for my scrap", "generate scrap banner", "upload banner for {site}", or after a scrap ships to prod. Does NOT cover scrap script generation (see trawl-scrap-design) or CLI account management (see trawl-cli).
 ---
 
 # Trawl Scrap Banner
 
-Generate + upload a brand-aware 1200x630 banner for a Trawl scrap. Prototype validated 2026-05-10 on eBay.
+Generate + upload a brand-aware 1200x630 banner for a Trawl scrap. See the Examples table for validated brands (eBay, Reddit, GitHub).
 
 ## When to use
 

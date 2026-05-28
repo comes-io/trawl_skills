@@ -36,3 +36,12 @@ test('TRAWL.url and TRAWL.<custom> params are unchanged', () => {
   assert.equal(TRAWL.slug, 'foo');
   assert.equal(TRAWL.page, '2');
 });
+
+test('value-less flags (parsed as boolean true) are ignored, not leaked or crashing', () => {
+  // run-local.mjs parses `--account-username` (no =value) to boolean `true`.
+  // It must coerce to null, never `true`, and never call readFile(true).
+  const { TRAWL, account } = buildContext({ url: true, 'account-username': true, 'account-cookies': true }, fakeRead);
+  assert.equal(TRAWL.url, null);
+  assert.equal(account.username, null);
+  assert.equal(TRAWL.account, null);
+});

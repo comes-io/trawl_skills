@@ -11,7 +11,13 @@ import { resolve } from 'node:path';
  * @returns {{ TRAWL: object, account: object }}
  */
 export function buildContext(flags, readFile = (p) => readFileSync(resolve(p), 'utf8')) {
-  const TRAWL = { url: flags.url || null };
+  // A flag passed without `=value` parses to boolean `true` (see run-local.mjs's
+  // parser). Coerce any non-string flag to null so a value-less flag can't leak a
+  // boolean into the context (e.g. `TRAWL.account.username === true`) or crash
+  // `readFile(true)`.
+  const str = (v) => (typeof v === 'string' ? v : null);
+
+  const TRAWL = { url: str(flags.url) };
   if (typeof flags.params === 'string') {
     for (const pair of flags.params.split(',')) {
       const eqIdx = pair.indexOf('=');
@@ -21,11 +27,12 @@ export function buildContext(flags, readFile = (p) => readFileSync(resolve(p), '
   }
 
   const account = {
-    username: flags['account-username'] || null,
-    password: flags['account-password'] || null,
+    username: str(flags['account-username']),
+    password: str(flags['account-password']),
   };
-  if (flags['account-cookies']) {
-    account.session = { cookies: JSON.parse(readFile(flags['account-cookies'])) };
+  const cookiesPath = str(flags['account-cookies']);
+  if (cookiesPath) {
+    account.session = { cookies: JSON.parse(readFile(cookiesPath)) };
   }
 
   // Parity with the worker (trawl_node#786): also expose creds under TRAWL.account.*.

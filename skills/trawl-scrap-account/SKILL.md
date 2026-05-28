@@ -23,7 +23,7 @@ Injecting cookies does not change the worker's fingerprint policy.
 
 ## Trawl-managed credentials (legacy flow)
 
-The script receives two VM globals injected by the worker:
+The worker injects the account credentials under `TRAWL.account`:
 
 - `TRAWL.account.username` — the username stored for this scrap account (alias: `account.username`).
 - `TRAWL.account.password` — the password stored for this scrap account (alias: `account.password`).

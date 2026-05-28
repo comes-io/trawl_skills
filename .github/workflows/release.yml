@@ -35,5 +35,8 @@ jobs:
       - name: Publish to npm via OIDC
         if: steps.semantic.outputs.new_release_published == 'true'
         run: |
+          # npm Trusted Publishing (token-less OIDC) requires npm >= 11.5.1;
+          # Node 22 ships npm 10.x, which fails with ENEEDAUTH on publish.
+          npm install -g npm@latest
           npm version ${{ steps.semantic.outputs.new_release_version }} --no-git-tag-version
           npm publish --provenance --access public

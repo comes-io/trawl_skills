@@ -15,33 +15,35 @@ Injecting cookies does not change the worker's fingerprint policy.
 
 ## Decision tree
 
-1. **Plain username/password login, no MFA** → use **Trawl-managed credentials** (section below). Trawl stores credentials encrypted; the script reads `account.username` / `account.password` at runtime and calls `saveSession()` after a successful login to reuse the session on subsequent runs.
+1. **Plain username/password login, no MFA** → use **Trawl-managed credentials** (section below). Trawl stores credentials encrypted; the script reads `TRAWL.account.username` / `TRAWL.account.password` at runtime and calls `saveSession()` after a successful login to reuse the session on subsequent runs.
 
 2. **One-shot test or short-lived experiment, or you want to verify your cookies work before setting up persistence** → use **Flavour A — Embedded BYO-cookies**. Hard-code the cookie array directly in the script body. Accepts the trade-off that cookies are in plain text in the script source.
 
-3. **MFA, SSO, OAuth, or you don't want to hand credentials to Trawl** → use **Flavour B — Persisted BYO-cookies**. Export cookies from a logged-in browser session, push them into `account.session.cookies` via UI, CLI, or API, and the script reads them back before navigation. Cookies are encrypted at rest.
+3. **MFA, SSO, OAuth, or you don't want to hand credentials to Trawl** → use **Flavour B — Persisted BYO-cookies**. Export cookies from a logged-in browser session, push them into `TRAWL.account.session.cookies` via UI, CLI, or API, and the script reads them back before navigation. Cookies are encrypted at rest.
 
 ## Trawl-managed credentials (legacy flow)
 
 The script receives two VM globals injected by the worker:
 
-- `account.username` — the username stored for this scrap account.
-- `account.password` — the password stored for this scrap account.
+- `TRAWL.account.username` — the username stored for this scrap account (alias: `account.username`).
+- `TRAWL.account.password` — the password stored for this scrap account (alias: `account.password`).
 
-After a successful login, call `saveSession(await page.cookies())` immediately. The worker persists the cookie array encrypted at rest and exposes it as `account.session.cookies` on the next run.
+After a successful login, call `saveSession(await page.cookies())` immediately. The worker persists the cookie array encrypted at rest and exposes it as `TRAWL.account.session.cookies` on the next run.
+
+> Legacy bare `account.*` (e.g. `account.username`) still works as an alias.
 
 ```js
 const page = await browser.newPage();
 
-if (account.session?.cookies) {
+if (TRAWL.account?.session?.cookies) {
   // Saved session exists — restore cookies and skip the login flow.
-  await page.setCookie(...account.session.cookies);
+  await page.setCookie(...TRAWL.account.session.cookies);
   await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
 } else {
   // First run (or cleared session) — perform full login.
   await page.goto('https://example.com/login', { waitUntil: 'domcontentloaded' });
-  await page.type('#username', account.username);
-  await page.type('#password', account.password);
+  await page.type('#username', TRAWL.account.username);
+  await page.type('#password', TRAWL.account.password);
   await Promise.all([
     page.click('button[type=submit]'),
     page.waitForNavigation({ waitUntil: 'networkidle2' }),
@@ -78,7 +80,7 @@ await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded'
 
 ## Flavour B — Persisted BYO-cookies
 
-Export cookies from a logged-in browser session. Three write paths exist for `account.session.cookies` (any one is fine; the scrap source reads them back identically):
+Export cookies from a logged-in browser session. Three write paths exist for `TRAWL.account.session.cookies` (any one is fine; the scrap source reads them back identically):
 
 - **UI** (one-off / interactive): scrap settings drawer → Account section → **Upload session cookies** → paste a Puppeteer cookie JSON array → Save.
 - **CLI** (scripted / batch): `trawl scraps account session set <scrap-id> --cookies <file>` (npm `@trawlme/cli` ≥ 1.14.0).
@@ -87,12 +89,12 @@ Export cookies from a logged-in browser session. Three write paths exist for `ac
 The worker encrypts them at rest; the script reads the same global as the managed flow:
 
 ```js
-if (!account.session?.cookies) {
-  throw new Error('Flavour B requires account.session.cookies — push them via UI / CLI / API first.');
+if (!TRAWL.account?.session?.cookies) {
+  throw new Error('Flavour B requires TRAWL.account.session.cookies — push them via UI / CLI / API first.');
 }
 
 const page = await browser.newPage();
-await page.setCookie(...account.session.cookies);
+await page.setCookie(...TRAWL.account.session.cookies);
 await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
 ```
 

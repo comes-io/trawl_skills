@@ -68,7 +68,7 @@ await page.reload({ waitUntil: 'domcontentloaded' });
 
 The worker starts a fresh browser context on each run. Persistence requires:
 
-- `saveSession(await page.cookies())` — stores encrypted, exposed as `account.session.cookies` next run.
+- `saveSession(await page.cookies())` — stores encrypted, exposed as `TRAWL.account.session.cookies` next run (alias: `account.session.cookies`).
 - Flavour B persistence endpoint — cookies pushed externally.
 
 Flavour A re-injects cookies from the script source on every run.

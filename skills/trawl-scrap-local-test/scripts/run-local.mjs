@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Local Trawl scrap harness — mirrors the worker entry contract.
-// Globals injected: browser, TRAWL, account, returnData, saveSession.
+// Globals injected: browser, TRAWL (incl. TRAWL.account.*), account (legacy alias), returnData, saveSession.
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { buildContext } from './build-context.mjs';
 
 const args = process.argv.slice(2);
 
@@ -12,9 +13,9 @@ function help() {
 Flags:
   --url=<url>                  TRAWL.url
   --params=k=v[,k=v]*          TRAWL.<custom> keys
-  --account-username=<user>    account.username
-  --account-password=<pwd>     account.password
-  --account-cookies=<path>     account.session.cookies (JSON array)
+  --account-username=<user>    TRAWL.account.username (alias: account.username)
+  --account-password=<pwd>     TRAWL.account.password (alias: account.password)
+  --account-cookies=<path>     TRAWL.account.session.cookies (alias: account.session.cookies; JSON array)
   --remote                     connect to existing Chrome at 127.0.0.1:9222
   --headless                   launch Chrome in headless mode (no window)
   --chrome=<path>              path to Chrome executable (auto-detected if omitted)
@@ -46,22 +47,7 @@ if (!scrapPath) {
 
 const scrapBody = readFileSync(resolve(scrapPath), 'utf8');
 
-const TRAWL = { url: flags.url || null };
-if (typeof flags.params === 'string') {
-  for (const pair of flags.params.split(',')) {
-    const eqIdx = pair.indexOf('=');
-    if (eqIdx <= 0) continue;
-    const k = pair.slice(0, eqIdx);
-    const v = pair.slice(eqIdx + 1);
-    TRAWL[k] = v;
-  }
-}
-
-const account = { username: flags['account-username'] || null, password: flags['account-password'] || null };
-if (flags['account-cookies']) {
-  const cookies = JSON.parse(readFileSync(resolve(flags['account-cookies']), 'utf8'));
-  account.session = { cookies };
-}
+const { TRAWL, account } = buildContext(flags);
 
 let puppeteer;
 try {

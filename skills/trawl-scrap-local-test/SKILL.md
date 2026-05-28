@@ -38,7 +38,8 @@ The script body runs in a closure. The harness injects these globals, mirroring 
 
 - `browser` — the Puppeteer browser instance (headed, with DevTools open).
 - `TRAWL` — object with `url` (from `--url`) and any `<custom>` keys from `--params`.
-- `account` — object with `username` and `password` (from `--account-username` / `--account-password`), plus optional `session.cookies` loaded from a JSON array file via `--account-cookies`.
+- `TRAWL.account` — sub-namespace with `username`, `password`, and optional `session.cookies` (from `--account-username` / `--account-password` / `--account-cookies`). `null` when no credentials are provided (mirrors prod worker).
+- `account` — legacy alias for `TRAWL.account` (still works; both are injected).
 - `returnData(arr)` — stub that prints the array as JSON to stdout.
 - `saveSession(cookies)` — stub that prints the cookie array to stdout (does not persist).
 
@@ -48,9 +49,9 @@ No changes to the script body are needed to run it locally.
 
 - `--url=<url>` — sets `TRAWL.url` (use a real value if your script navigates to it).
 - `--params=k=v[,k=v]*` — sets `TRAWL.<custom>` keys (comma-separated `key=value` pairs).
-- `--account-username=<u>` — sets `account.username`.
-- `--account-password=<p>` — sets `account.password`.
-- `--account-cookies=<path>` — loads `account.session.cookies` from a JSON array file.
+- `--account-username=<u>` — sets `TRAWL.account.username` (alias: `account.username`).
+- `--account-password=<p>` — sets `TRAWL.account.password` (alias: `account.password`).
+- `--account-cookies=<path>` — loads `TRAWL.account.session.cookies` from a JSON array file (alias: `account.session.cookies`).
 - `--remote` — connects to an existing Chrome at `http://127.0.0.1:9222` (instead of launching a fresh one). Useful for MFA flows — see `references/headed-debug.md`.
 - `--headless` — launches Chrome headlessly (no window). Default is headed (`headless: false`) for interactive debugging.
 - `--chrome=<path>` — path to a Chrome executable. Auto-detected on macOS and Linux when omitted; pass explicitly if Chrome lives in a non-standard location or you want to use Chromium.

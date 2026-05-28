@@ -10,22 +10,22 @@ Async helper injected by the worker. Call after confirming login succeeded — n
 await saveSession(await page.cookies());
 ```
 
-The worker persists the cookie array encrypted. On the next run, `account.session.cookies` is populated and the login flow is skipped. Call once per run only.
+The worker persists the cookie array encrypted. On the next run, `TRAWL.account.session.cookies` is populated and the login flow is skipped. Call once per run only.
 
 ### Reuse pattern (full code)
 
 ```js
 const page = await browser.newPage();
 
-if (account.session?.cookies) {
+if (TRAWL.account?.session?.cookies) {
   // Saved session exists — restore cookies and skip the login flow.
-  await page.setCookie(...account.session.cookies);
+  await page.setCookie(...TRAWL.account.session.cookies);
   await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
 } else {
   // First run (or cleared session) — perform full login.
   await page.goto('https://example.com/login', { waitUntil: 'domcontentloaded' });
-  await page.type('#username', account.username);
-  await page.type('#password', account.password);
+  await page.type('#username', TRAWL.account.username);
+  await page.type('#password', TRAWL.account.password);
   await Promise.all([
     page.click('button[type=submit]'),
     page.waitForNavigation({ waitUntil: 'networkidle2' }),
@@ -35,7 +35,7 @@ if (account.session?.cookies) {
 }
 ```
 
-`account.session` is `undefined` on the first run — hence the optional chain. Both branches must reach the same post-login URL before scraping starts.
+`TRAWL.account.session` is `undefined` on the first run — hence the optional chain. Both branches must reach the same post-login URL before scraping starts.
 
 ### Forced re-login
 
@@ -43,7 +43,7 @@ if (account.session?.cookies) {
 trawl scraps account clear-session <scrap-id>
 ```
 
-The next run finds `account.session` undefined, falls into the login branch, and re-runs `saveSession` on success.
+The next run finds `TRAWL.account.session` undefined, falls into the login branch, and re-runs `saveSession` on success.
 
 ### When the login flow itself breaks
 
@@ -58,8 +58,8 @@ const page = await browser.newPage();
 
 try {
   await page.goto('https://example.com/login', { waitUntil: 'domcontentloaded' });
-  await page.type('#username', account.username);
-  await page.type('#password', account.password);
+  await page.type('#username', TRAWL.account.username);
+  await page.type('#password', TRAWL.account.password);
   await Promise.all([
     page.click('button[type=submit]'),
     page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 }),

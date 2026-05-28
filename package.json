@@ -10,6 +10,7 @@
     "skills/**/*.md",
     "skills/**/references/**",
     "skills/**/run-local.mjs",
+    "skills/**/build-context.mjs",
     "bin/install.js",
     "README.md",
     "LICENSE"
@@ -27,7 +28,7 @@
   },
   "scripts": {
     "install-skill": "node bin/install.js",
-    "test": "node bin/install.test.mjs && node skills/trawl-scrap-local-test/scripts/run-local.test.mjs"
+    "test": "node bin/install.test.mjs && node skills/trawl-scrap-local-test/scripts/run-local.test.mjs && node skills/trawl-scrap-local-test/scripts/build-context.test.mjs"
   },
   "keywords": [
     "trawl",

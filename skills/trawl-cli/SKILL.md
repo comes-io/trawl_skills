@@ -91,10 +91,24 @@ trawl scraps update <id> --params-file ./params.json        # bulk params from f
 
 ### Run / trigger / watch
 
-- `trawl scraps run <id>` — synchronous run, blocks until done
+- `trawl scraps run <id>` — synchronous run via the load endpoint, blocks until done
 - `trawl scraps run <id> --watch` — same but streams activity logs
-- `trawl scraps trigger <id>` — fire-and-forget (returns immediately)
+- `trawl scraps trigger <id>` — **async by default**: queues the worker run and returns immediately (no waiting on the 30-250s run)
+- `trawl scraps trigger <id> --wait` — synchronous: block until the run completes (legacy behaviour)
+- `trawl scraps trigger <id> --watch` — queue, then stream the activity log
 - `trawl scraps watch <id>` — attach to an in-progress run's activity stream
+
+### Inspect past runs
+
+```bash
+trawl scraps history <id>                   # table of recent runs (status, time, tier, failureKind)
+trawl scraps history <id> --json            # JSON array, newest first
+trawl scraps history <id> --limit 50        # cap rows (default 20)
+trawl scraps run-info <hid>                 # one run's detail by its history id (status, tier, failureKind, error + selector)
+trawl scraps run-info <hid> --json
+```
+
+`doctor`/`autofix` (below) inspect the **last** run; `history` + `run-info` reach **any** run: list with `history`, then pass a run's `hid` to `run-info` for the full diagnosis. `run-info` hits `/api/historys/:hid`, which returns the proxy tier + `failureKind` to the scrap owner. (In `history`'s embedded list those columns may be blank — drill into `run-info <hid>` for them.)
 
 ### Delete
 

@@ -15,6 +15,7 @@ Follows the [Anthropic Agent Skills](https://github.com/anthropics/skills) layou
 | `trawl-scrap-design` | Best practices for writing the Puppeteer script body — selectors, returnData shape, params, validation, anti-patterns. |
 | `trawl-scrap-account` | Authentication — Trawl-managed credentials, BYO-cookies (embedded and persisted flavours), session reuse. |
 | `trawl-scrap-local-test` | Run a scrap locally with headed Chrome before publishing, mirroring the worker entry contract. |
+| `trawl-scrap-banner` | Generate + upload a brand-aware 1200x630 banner (logo fetch, gradient, headless render) for a scrap. |
 
 ## Install
 

@@ -47,7 +47,11 @@ trawl scraps list --json                   # JSON array
 trawl scraps list --status failure         # filter by last-run status
 trawl scraps list --status success
 trawl scraps list --status never           # never run
+trawl scraps list --limit 10               # show only the first N (fetches all, then truncates)
+trawl scraps list --page 2                 # fetch one page only (50 per page, no auto-pagination)
 ```
+
+By default `list` auto-paginates and returns every scrap. `--limit` and `--page` are mutually exclusive.
 
 ### Inspect a single scrap
 
@@ -70,6 +74,7 @@ Flags:
 - `-u, --url` — target URL (also exposed as `TRAWL.url` in the script)
 - `-d, --description` — what the scrap does (used by wizard few-shot examples + future marketplace listing)
 - `-r, --request` — the Puppeteer script body (must call `returnData(arr)`)
+- `--tier` — force a proxy tier (`tier0|tier1|tier2|tier3|tier4`). Advanced/optional: the platform auto-escalates on empty runs, so you rarely set this — only pin a higher tier up-front for a site you *know* is heavily protected (see `trawl-scrap-design` → "Hard anti-bot sites").
 
 For the script body, see the `trawl-scrap-design` skill.
 
@@ -83,7 +88,8 @@ trawl scraps update <id> --alert ops@example.com # email on failure
 trawl scraps update <id> --no-alert              # disable alerts
 trawl scraps update <id> --autofix               # enable AI Fix (auto-repair on failure) — @trawlme/cli@1.11.0+
 trawl scraps update <id> --no-autofix            # disable AI Fix
-trawl scraps update <id> -p '{"key":"page","value":"2"}'    # add a param (JSON object)
+trawl scraps update <id> --tier tier3            # force a proxy tier (tier0..tier4); rarely needed — platform auto-escalates
+trawl scraps update <id> -p '[{"TRAWL.page":"2"}]'          # set params (JSON array of {"TRAWL.<name>":"value"} objects)
 trawl scraps update <id> --params-file ./params.json        # bulk params from file
 ```
 

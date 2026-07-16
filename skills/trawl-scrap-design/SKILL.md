@@ -9,7 +9,7 @@ Use when writing the Puppeteer script body that runs on a Trawl worker.
 
 ## The worker boundary
 
-The worker handles fingerprinting, proxy escalation, AI Fix, and schema validation. Your script handles selectors, returnData shape, params, and graceful failure. See `references/anti-patterns.md`.
+The worker handles fingerprinting, proxy escalation, AI Fix, and run-outcome classification (`statusDetail`: success/error/empty/regression). Your script handles selectors, returnData shape, params, and graceful failure. See `references/anti-patterns.md`.
 
 > **Don't add stealth in your script.** Trawl's worker handles fingerprinting, proxy rotation, and bot-detection countermeasures centrally. Adding stealth plugins, UA spoofing, viewport randomisation, or aggressive jitter in your script duplicates worker policy and causes drift. The worker's policy evolves; your script's hardcoded tricks won't.
 
@@ -122,7 +122,7 @@ try {
 
 The platform auto-escalates proxy tiers when a run comes back empty — you usually don't manage tiers at all. For a site you *know* is heavily protected, there are two CLI knobs (see the `trawl-cli` skill for full flag docs):
 
-- `trawl scraps update <id> --tier tier0..tier4` — requests a starting tier so the first run doesn't waste a cycle. **It's clamped to tier3 for domains that aren't allow-listed for tier4** — requesting `tier4` does not error, it just gets capped. On `update` the CLI echoes the clamp (`⚠ proxyTier requested tier4 → applied tier3`); on `create`/older servers it's silent.
+- `trawl scraps update <id> --tier tier0..tier4` — requests a starting tier so the first run doesn't waste a cycle. **It's clamped to tier3 for domains that aren't allow-listed for tier4** — requesting `tier4` does not error, it just gets capped. Since CLI 1.18.2, both `create` and `update` echo the clamp (`⚠ proxyTier requested tier4 → applied tier3`); on an older server that doesn't confirm the change, the CLI warns instead of pretending the request was applied.
 - `trawl scraps update <id> --force-tier tier0..tier4` — raises the tier **ceiling** past that auto-cap. History-gated: the server may refuse it (CLI exits `1`) or it may cost more, depending on the scrap's run history.
 
 Don't assume the requested tier was honored — verify with `trawl scraps history <id>` / `trawl scraps run-info <hid>` after a run. Don't try to outsmart protection in your script — return what you can and let the platform escalate.
@@ -147,7 +147,7 @@ Some pages hide data behind real UI interactions — scroll, hover, click, form 
 
 - *Trawl Scraping docs (in-app help center)* — selector basics, `returnData`, scrap lifecycle.
 - *Trawl Scraping Advanced docs* — proxy tiers, escalation triggers, rate-limit guidance.
-- *Trawl Data Quality docs* — `checkSchema` usage; note that `validation_failed` is a distinct history status from `error` and `0 items`.
+- *Trawl Data Quality docs* — reading run outcomes: `history[].status` is tri-state (`true`/`false`/`null`); `history[].statusDetail` is the fine-grained enum `success` / `error` / `empty` / `regression` (`empty` = ran clean but `returnData([])`; `regression` = item count dropped sharply vs. prior runs). There is no `validation_failed` status — schema validation (`checkSchema`) was decommissioned.
 - *Trawl AI Features docs* — AI Fix quotas, how selector comments improve AI Fix accuracy.
 - *Trawl Schedule + Parameters docs* — `TRAWL.<custom>` params, `RANDOM(...)` and `DATE(...)` helpers.
 

@@ -33,7 +33,7 @@ Log in manually in that Chrome window (complete MFA, solve CAPTCHA, etc.). Then 
 node run-local.mjs scrap.js --remote
 ```
 
-The harness calls `puppeteer.connect({ browserURL: 'http://127.0.0.1:9222' })` and opens a new page. It does not close the browser when done.
+The harness only calls `puppeteer.connect({ browserURL: 'http://127.0.0.1:9222' })` when `--remote` is passed (otherwise it launches a fresh browser). Only `browser` is injected as a global — not `page` — so the script body itself is responsible for calling `browser.newPage()`. Under `--remote` the harness calls `browser.disconnect()` when done instead of `browser.close()`, so the manually-launched Chrome instance stays open.
 
 ## Intermediate snapshots
 

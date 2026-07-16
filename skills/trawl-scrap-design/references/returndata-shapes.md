@@ -28,13 +28,13 @@ Return a flat object per item. Nest only when source data is genuinely nested �
 
 ## null vs omission
 
-Return `null` for absent optional fields. Never omit the key — schema validation distinguishes "null" from "key never sent", and omission breaks it silently.
+Return `null` for absent optional fields. Never omit the key — downstream consumers (the frontend table, exports, any consumer script) expect every item to carry the same key set; omitting a key produces ragged objects that silently break column-based rendering.
 
 ```js
 // Good
 { title: 'Widget Pro', discount_pct: null, badge: null }
 
-// Bad — key omitted, breaks checkSchema expectations
+// Bad — key omitted, produces a ragged object across the returned array
 { title: 'Widget Pro' }
 ```
 
@@ -84,8 +84,13 @@ returnData(allItems); // single call with all pages merged
 
 ---
 
-## Compatibility with checkSchema
+## How returnData shape affects the run outcome
 
-- `validation_failed` is distinct from `error` (script threw) and `0 items` (empty array). Check all three when debugging data gaps.
-- Missing required keys → `validation_failed`, not `error` — no retry triggered.
-- See *Trawl Data Quality docs* for schema syntax and enforcement.
+Each run gets one `history` row with `status` (tri-state `true`/`false`/`null`) and a finer `statusDetail` enum: `success` / `error` / `empty` / `regression`. There is no schema-validation status — the platform does not enforce a JSON Schema against your items, so a "wrong shape" (missing key, wrong type) never fails the run on its own. What actually flips `statusDetail`:
+
+- **`success`** — `returnData(arr)` called with at least one item.
+- **`empty`** — `returnData([])` (or no call at all) — ran clean but returned zero items. Usually means a selector broke; see `references/anti-patterns.md`.
+- **`error`** — the script threw. Throw only for structural failures (see the Resilience section in `SKILL.md`) — a per-field `try/catch` that degrades a field to `null` does NOT produce `error`, it stays `success` with that field `null`.
+- **`regression`** — item count dropped sharply vs. recent history, computed server-side after a successful run.
+
+Ragged objects (an omitted key on some items) don't get their own status — they just make the returned array inconsistent for whatever consumes it downstream. Keep every item's key set identical (`null` for absent values) so `success` runs are actually usable.

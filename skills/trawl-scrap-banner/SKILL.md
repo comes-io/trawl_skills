@@ -95,7 +95,7 @@ Linux / CI: replace with `google-chrome` or `chromium-browser` (same flags). On 
 
 ### 5. Upload
 
-Requires an authenticated CLI session first — `trawl login` (or `TRAWL_TOKEN` env / `trawl login --token <jwt>`). Not logged in at all → exit `1` ("Not logged in"); an expired/invalid token → exit `3` (server 401).
+Requires an authenticated CLI session first — `trawl login` (or `TRAWL_TOKEN` env / `trawl login --token <jwt>`). Not logged in at all → exit `3` (kind `auth`, since CLI 1.18.2 — was exit `1`); an expired/invalid token → also exit `3` (server 401).
 
 ```bash
 trawl scraps banner ${scrapId} -f /tmp/${siteName}-banner.png
@@ -105,7 +105,7 @@ trawl scraps banner ${scrapId} -f /tmp/${siteName}-banner.png
 
 CLI confirms upload. Banner is immediately visible on trawl.me.
 
-**Failure detection:** `banner` has **no `--json` mode** — the exit code is the only machine-readable signal. `0` = uploaded; non-zero = failed: `1` not logged in (no token) / other error, `3` expired-or-invalid token (401), `4` wrong `scrapId` (404), `5` network. Check `$?`, don't parse stdout for success/failure.
+**Failure detection:** `banner` has **no `--json` mode** — the exit code is the only machine-readable signal. `0` = uploaded; non-zero = failed: `1` other/unmapped error, `2` malformed `scrapId` (not a 24-char hex ObjectId — usage error), `3` not logged in / expired-or-invalid token (401), `4` wrong `scrapId` (404), `5` network. Check `$?`, don't parse stdout for success/failure.
 
 ## Conventions
 

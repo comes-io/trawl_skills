@@ -39,7 +39,7 @@ If the user gets `Session expired or invalid. Run: trawl login`, their stored JW
 CI-relevant env vars. The first three are per-invocation session overrides — they take precedence over stored config without writing to disk (for normal commands; note `trawl login` itself still persists a token even when `TRAWL_TOKEN` is set):
 - `TRAWL_TOKEN` — session JWT, takes precedence over `trawl login`'s stored token
 - `TRAWL_API_URL` — API base URL, takes precedence over `trawl login --url`
-- `TRAWL_TIMEOUT` — per-request fetch timeout in ms (default 30000)
+- `TRAWL_TIMEOUT` — per-request fetch timeout in ms (default 30000; 300000 for `scraps run`, `data --fresh`, and `trigger --wait` since CLI 1.18.4 — these hit the same server-side scrap-execute path, which legitimately runs 30-250s; this env var still overrides that longer default too, higher or lower)
 - `DEBUG` — any truthy value prints the full error stack trace to stderr, same effect as the global `--debug` flag
 
 `TRAWL_CONFIG_DIR` is different — it **redirects where the CLI reads and writes** its config file (so `trawl login` persists there). Point it at an ephemeral dir for hermetic runs, e.g. `TRAWL_CONFIG_DIR=$(mktemp -d)`.
@@ -57,13 +57,14 @@ trawl scraps list --status failure         # filter by last-run status
 trawl scraps list --status success
 trawl scraps list --status never           # never run
 trawl scraps list --status running         # run currently executing (status: null)
+trawl scraps list --status regression      # last run succeeded but item count regressed vs baseline
 trawl scraps list --limit 10               # cap output client-side
 trawl scraps list --page 2                 # single-page mode (one 50-row page)
 ```
 
 > **Pagination:** `list` fetches **all** scraps by default (it auto-paginates internally at 200/page until a short page). `--page N` switches to single-page mode — one 50-row page, no auto-pagination. `--limit N` caps the output client-side. `--limit` and `--page` are mutually exclusive (usage error, exit 2). **Since CLI 1.18.3**, a non-numeric `--limit`/`--page` value (e.g. `abc`) is also a usage error, exit `2` — before 1.18.3 it silently became `NaN`, which truncated results to 0 rows or sent a bare `?page=NaN` to the server with no warning. Because the default fetches everything, a `jq`-by-title lookup over `list --json` sees every scrap — no page-1 blind spot.
 
-**Since CLI 1.18.3**, a scrap whose last run is still executing (`status: null` server-side) renders as `running` — a cyan `↻` in the table, matched by `--status running`. Previously an in-flight run had no distinct state anywhere in `list`.
+**Since CLI 1.18.3**, a scrap whose last run is still executing (`status: null` server-side) renders as `running` — a cyan `↻` in the table, matched by `--status running`. Previously an in-flight run had no distinct state anywhere in `list`. **Since CLI 1.18.4**, a run whose item count regressed vs baseline (`statusDetail: 'regression'`) renders as `regression` — an amber `▼`, matched by `--status regression` — distinct from the red `✗` a genuine failure gets (the write actually succeeded; only the count dropped). `doctor` shows the same distinction as its own amber `● regression` badge instead of bucketing it under `● failed`.
 
 ### Inspect a single scrap
 
@@ -90,6 +91,8 @@ trawl scraps data <id> --json              # last run output (the scraped data)
 | Payload aged out of retention (server keeps only the newest row per scrap+status bucket) — **including an aged-out regression row**, which gets this same envelope instead of fabricated items | error, exit `4`, kind `not_found` |
 
 Before 1.18.2 the zero-item/never-run/failed/aged-out states collapsed into the same `[]` / "No data yet." Before 1.18.3, a run still in progress fell through to the misleading "aged out of retention" message (status `null` isn't `false`, so it skipped the failure check, then found no persisted payload yet), and a regression row was misclassified as `run_failed` — hiding real, already-persisted items behind an error. Never assume "no data" from an empty result without checking the exit code and `kind`.
+
+**`--fresh` regression warning (since CLI 1.18.5):** the table above (regression row) already applied to the default persisted-data path; `data --fresh` now gets the same treatment — after the live run finishes, the CLI does a follow-up `GET /api/scraps/:id` and prints a stderr warning pointing at `scraps doctor <id>` if the finalized run regressed vs baseline. It still prints the real items on stdout either way (exit `0`) — the check is best-effort and never gates the actual output. Before 1.18.5, `--fresh` rendered items with no regression check at all, because the `load()` response's own embedded `scrap.history[0]` can't be trusted for this (node pushes the just-finished run onto the *end* of the array, and the regression flip itself lands via a raw DB patch issued after that response was already built, so it's never reflected in what `load()` echoes back).
 
 ### Create a scrap
 
@@ -139,12 +142,19 @@ trawl scraps update <id> --tier tier2 --json                # full scrap JSON, o
 
 ### Run / trigger / watch
 
-- `trawl scraps run <id>` — synchronous run via the load endpoint, blocks until done
-- `trawl scraps run <id> --watch` — same but streams activity logs
+- `trawl scraps run <id>` — synchronous run via the load endpoint, blocks until done. Arms a 300s timeout (since CLI 1.18.4 — see `TRAWL_TIMEOUT` above) instead of the generic 30s default, because this endpoint legitimately runs 30-250s server-side.
+- `trawl scraps run <id> --watch` — same, then polls for progress (since CLI 1.18.4 — see below; it does **not** stream)
 - `trawl scraps trigger <id>` — **async by default**: queues the worker run and returns immediately (no waiting on the 30-250s run)
-- `trawl scraps trigger <id> --wait` — synchronous: block until the run completes (legacy behaviour)
-- `trawl scraps trigger <id> --watch` — queue, then stream the activity log
-- `trawl scraps watch <id>` — attach to an in-progress run's activity stream
+- `trawl scraps trigger <id> --wait` — synchronous: block until the run completes (legacy behaviour). Same 300s timeout as `run`, since CLI 1.18.4.
+- `trawl scraps trigger <id> --watch` — queue, then poll for progress (since CLI 1.18.4 — see below; it does **not** stream)
+- `trawl scraps watch <id>` — the standalone command: attach to an in-progress run's activity stream over SSE. **Unchanged** by any of the above — this is the one that actually streams.
+
+**`--watch` is poll-based, not a live stream (since CLI 1.18.4):** `scraps run --watch` and `scraps trigger --watch` used to open the activities SSE stream after launching the run — but that showed nothing either way: the activities SSE endpoint has no backlog, so by the time a *synchronous* run had already finished there was nothing left to emit, and for the default *async* `trigger` the run executes in a separate cron-consumer pod whose events never reach the API pod holding the SSE connection at all. Both flags now instead poll two Mongo-backed REST reads every 2s, up to 300s: `GET /api/scraps/:id` for terminal status, and the activities list endpoint for new lines — printing each new activity line as it appears, then the terminal status. Before doing so they print this notice:
+> Live activity streaming has no signal for this run (async/cross-pod) — polling for progress instead…
+
+A run that never reaches a terminal status within the 300s poll window prints an honest timeout notice pointing at `scraps doctor <id>`, instead of hanging silently or lying about completion. **Since CLI 1.18.5**, this poll also correctly tracks a `trigger --watch` call that deduped onto an already-in-flight worker job (i.e. the scrap was triggered again while a run was still executing) — before 1.18.5 that case could falsely time out waiting for a history id that would never change, because the dedup reuses the existing row instead of creating a new one. `--watch` is now safe to use on retry or concurrent `trigger` calls.
+
+`scraps watch <id>` (the standalone command above) is a separate code path and is unaffected by any of this — it still opens the live SSE stream directly.
 
 ### Inspect past runs
 
@@ -177,19 +187,23 @@ For per-scrap authentication, see the `trawl-scrap-account` skill. CLI commands:
 The session JWT authenticates two different ways depending on the endpoint:
 
 ```bash
+TOKEN=$(trawl token)
+
 # MCP endpoint — accepts the session JWT as a Bearer token. This is a real,
 # runnable JSON-RPC 2.0 call (tools/list) against the Streamable HTTP
 # transport — verified against trawl_node's mcp.controller.js:
-curl -X POST https://api.trawl.me/api/mcp \
-  -H "Authorization: Bearer $(trawl token)" \
+curl --fail-with-body -X POST https://api.trawl.me/api/mcp \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
 # Raw REST (/api/scraps, etc.) — the JWT strategy is COOKIE-ONLY (reads the TOKEN cookie).
 # Bearer is NOT accepted here; pass the JWT as the TOKEN cookie instead:
-curl -H "Cookie: TOKEN=$(trawl token)" https://api.trawl.me/api/scraps
+curl --fail-with-body -H "Cookie: TOKEN=$TOKEN" https://api.trawl.me/api/scraps
 ```
+
+Capture `$(trawl token)` into `TOKEN` once and reuse it — inlining the substitution separately into each curl call can leave a call running with a silently empty token if the substitution fails. `--fail-with-body` makes curl exit non-zero on an HTTP error response (e.g. an empty/expired token → 401) while still printing the response body, instead of a `curl` that "succeeds" (exit 0) against an error page.
 
 `/api/mcp` only accepts `POST`. `GET` (and `DELETE`) return a JSON-RPC-shaped `405` — this server runs the stateless Streamable HTTP transport, which has no use for the SSE-resume/session-close semantics those methods exist for elsewhere in the spec. Always POST a JSON-RPC envelope. The `Accept` header must list **both** `application/json` and `text/event-stream` — the SDK transport rejects a POST with either one missing as `406 Not Acceptable` (`Client must accept both application/json and text/event-stream`), regardless of auth.
 
@@ -213,10 +227,13 @@ trawl scraps autofix <id> --json                  # raw autofix JSON
 trawl scraps data <id> --errors                   # failure diagnostics inline with the data command
 trawl scraps snapshot <id> --error -o /tmp/error.html   # download the error-path HTML
 trawl scraps snapshot <id> -o /tmp/page.html      # download the captured page HTML
+trawl scraps snapshot <id> --json                 # {"status":"no_runs"} exit 0 if never run — since CLI 1.18.4
 ```
 Note: the CLI surfaces the abstract proxy Tier (0–4) + diagnostics + autofix, but **not** cost or proxy nature/IP/vendor — those are admin-only by design.
 
-**No-runs shape, unified across commands:** `doctor --json`, `autofix --json`, and (**since CLI 1.18.3**) `data --errors --json` all return `{"status":"no_runs"}` (exit `0`) for a scrap that has **never run** — `doctor` had this shape since CLI 1.18.0; `autofix`/`data --errors` joined it in 1.18.3 (both used to return a bare `null`, indistinguishable from any other absent-payload state). Don't confuse it with `autofix --json`'s bare `null`, which means a run *did* happen but had no auto-fix attempt on it — genuinely "no data", a different state from "never ran at all". A run still **in progress** shows a `running` badge on `doctor`/`data --errors` (human mode) — never `failed` (**since CLI 1.18.3**).
+**No-runs shape, unified across commands:** `doctor --json`, `autofix --json`, `data --errors --json` (**since CLI 1.18.3**), and `snapshot --json` (**since CLI 1.18.4**) all return `{"status":"no_runs"}` (exit `0`) for a scrap that has **never run** — `doctor` had this shape since CLI 1.18.0; `autofix`/`data --errors` joined it in 1.18.3 (both used to return a bare `null`, indistinguishable from any other absent-payload state); `snapshot` joined it in 1.18.4 (it had no `--json` mode at all before then — a never-run scrap without `-o` just printed "No runs yet." to stdout and exited `0`, no machine-readable signal). Don't confuse it with `autofix --json`'s bare `null`, which means a run *did* happen but had no auto-fix attempt on it — genuinely "no data", a different state from "never ran at all". A run still **in progress** shows a `running` badge on `doctor`/`data --errors` (human mode) — never `failed` (**since CLI 1.18.3**).
+
+**`snapshot -o <file>` on a never-run scrap (since CLI 1.18.4):** without `--json`, this now exits `4` (`not_found`) instead of silently exiting `0` with nothing written — before 1.18.4 a script checking only the exit code couldn't tell "no file was produced" from success. `--json` takes priority when both flags are passed together.
 
 **"Create a job that runs every morning"**
 ```bash
@@ -232,7 +249,7 @@ trawl scraps run <id> --watch
 
 ## Other commands
 
-- `trawl scraps banner <id> -f <path>` — upload a banner image (jpg/png/webp) for a scrap; see the `trawl-scrap-banner` skill for the full generate + upload pipeline
+- `trawl scraps banner <id> -f <path>` — upload a banner image (png/jpg/jpeg/webp) for a scrap; see the `trawl-scrap-banner` skill for the full generate + upload pipeline. **Since CLI 1.18.4**, any other extension is a usage error, exit `2` (e.g. `Unsupported image type ".gif" — use png, jpg, or webp.`) — before 1.18.4 an unrecognized extension silently uploaded under a fabricated `image/png` Content-Type instead of being refused.
 - `trawl logout` — clear stored credentials
 - `trawl skills list/install/uninstall/update` — manage the bundled Claude Code skills (this package)
 - `trawl telemetry` — inspect/toggle usage telemetry (`TRAWL_TELEMETRY=0` / `DO_NOT_TRACK=1` env overrides also work)
@@ -300,9 +317,9 @@ Every command uses these exit codes — check `$?` instead of parsing stderr tex
 |---|---|
 | `0` | success |
 | `1` | unmapped API error (HTTP status other than 401/404) or an unhandled bug — also `scraps data`'s "last run failed" (kind `run_failed`) and "run in progress" (kind `in_progress`, **since CLI 1.18.3**) states, and a refused tier override (kind `unknown`) |
-| `2` | usage error — invalid flag/value or malformed input (bad ObjectId, invalid `--tier` value, malformed `-p` JSON, missing file, `--limit`+`--page` conflict, **since CLI 1.18.3 a non-numeric `--limit`/`--page` value**) **and, since CLI 1.18.2, commander parse errors** (unknown option/command, missing required arg — previously exit `1`) |
+| `2` | usage error — invalid flag/value or malformed input (bad ObjectId, invalid `--tier` value, malformed `-p` JSON, missing file, `--limit`+`--page` conflict, **since CLI 1.18.3 a non-numeric `--limit`/`--page` value**, **since CLI 1.18.4 an unsupported `banner -f` file extension**) **and, since CLI 1.18.2, commander parse errors** (unknown option/command, missing required arg — previously exit `1`) |
 | `3` | auth error — server **401** (token expired/invalid) **or no stored token at all** (since CLI 1.18.2 — previously exit `1`, kind `unknown`) |
-| `4` | not found — 404, or (for `scraps data`) never-ran / retention-aged-out |
+| `4` | not found — 404, or (for `scraps data`) never-ran / retention-aged-out, or (for `scraps snapshot -o <file>` without `--json`, since CLI 1.18.4) never-ran |
 | `5` | network error (unreachable API, timeout) |
 
 Edges to know:

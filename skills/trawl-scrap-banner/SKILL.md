@@ -101,7 +101,7 @@ Requires an authenticated CLI session first — `trawl login` (or `TRAWL_TOKEN` 
 trawl scraps banner ${scrapId} -f /tmp/${siteName}-banner.png
 ```
 
-`-f/--file` also accepts `.jpg` and `.webp`, not just `.png` — webp gives smaller uploads for the same visual quality if size matters.
+`-f/--file` also accepts `.jpg` and `.webp`, not just `.png` — webp gives smaller uploads for the same visual quality if size matters. Since CLI 1.18.4, any other extension is rejected with a usage error (exit 2) rather than uploaded mislabeled — png/jpg/webp only.
 
 CLI confirms upload. Banner is immediately visible on trawl.me.
 

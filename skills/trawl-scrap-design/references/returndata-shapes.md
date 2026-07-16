@@ -89,7 +89,7 @@ returnData(allItems); // single call with all pages merged
 Each run gets one `history` row with `status` (tri-state `true`/`false`/`null`) and a finer `statusDetail` enum: `success` / `error` / `empty` / `regression`. There is no schema-validation status — the platform does not enforce a JSON Schema against your items, so a "wrong shape" (missing key, wrong type) never fails the run on its own. What actually flips `statusDetail`:
 
 - **`success`** — `returnData(arr)` called with at least one item.
-- **`empty`** — `returnData([])` (or no call at all) — ran clean but returned zero items. Usually means a selector broke; see `references/anti-patterns.md`.
+- **`empty`** — an explicit `returnData([])` — ran clean but returned zero items. Usually means a selector broke; see `references/anti-patterns.md`. Never calling `returnData` at all is NOT `empty`: the run persists as `success` with a `null` payload, which `trawl scraps data` later reports as a `not_found` error (it looks like the payload aged out of retention). Always call `returnData`, even with `[]`.
 - **`error`** — the script threw. Throw only for structural failures (see the Resilience section in `SKILL.md`) — a per-field `try/catch` that degrades a field to `null` does NOT produce `error`, it stays `success` with that field `null`.
 - **`regression`** — item count dropped sharply vs. recent history, computed server-side after a successful run.
 

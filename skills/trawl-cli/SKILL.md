@@ -130,7 +130,7 @@ trawl scraps update <id> --tier tier2 --json                # full scrap JSON, o
 - **Old-server fallback (since CLI 1.18.2):** if a tier was requested but the response carries no `_tierOverride` at all, the CLI no longer echoes the requested value as if it were applied — it prints `⚠ Server did not confirm the tier change (older server) — verify with: trawl scraps get <id>` instead. Never assume the requested tier was honored on an unconfirmed response.
 - `--force-tier tier0..tier4` (update only) — raises the tier **ceiling** past that auto-cap. History-gated: the server may refuse it (the CLI prints `✗ tier ceiling override refused: <reason>` and exits `1`) or it may cost more, depending on the scrap's run history.
 - `--json` (create + update, since CLI 1.18.2): success returns the full scrap object including `_tierOverride`; a refused tier returns the standard error envelope on stdout and exits `1` — same outcome as human mode, just machine-readable.
-- Either way, verify what tier a run actually used with `trawl scraps history <id>` / `trawl scraps run-info <hid>` (the `history` list may show these columns blank — drill into `run-info` for the confirmed value) — don't assume the requested tier was honored.
+- Either way, verify what tier a run actually used with `trawl scraps history <id>` / `trawl scraps run-info <hid>` (on servers released before mid-July 2026 the `history` list shows these columns blank — `run-info` always has them) — don't assume the requested tier was honored.
 
 ### Run / trigger / watch
 
@@ -151,7 +151,7 @@ trawl scraps run-info <hid>                 # one run's detail by its history id
 trawl scraps run-info <hid> --json
 ```
 
-`doctor`/`autofix` (below) inspect the **last** run; `history` + `run-info` reach **any** run: list with `history`, then pass a run's `hid` to `run-info` for the full diagnosis. `run-info` hits `/api/historys/:hid`, which returns the proxy tier + `failureKind` to the scrap owner. (In `history`'s embedded list those columns may be blank — drill into `run-info <hid>` for them.)
+`doctor`/`autofix` (below) inspect the **last** run; `history` + `run-info` reach **any** run: list with `history`, then pass a run's `hid` to `run-info` for the full diagnosis. `run-info` hits `/api/historys/:hid`, which returns the proxy tier + `failureKind` to the scrap owner, plus the error snapshot (`errorMessage`/selector context) that `history`'s embedded list never carries. (On servers released before mid-July 2026, `history` also shows the tier/failureKind columns blank — `run-info` always has them.)
 
 ### Delete
 
@@ -274,8 +274,8 @@ There is **no `lastRun` field** — that never existed. Last-run status/timing/e
 - HTTP 403 → user doesn't own the scrap
 - HTTP 404 → wrong scrap ID
 - HTTP 422 on create/update → missing required field or invalid cron expression
-- HTTP 402 → quota/billing limit hit; message may carry `— upgrade: <url>` when the server provides one (since CLI 1.18.2)
-- HTTP 429 → rate-limited; message may carry `(retry after <N>s)` when the server sends a `Retry-After` header (since CLI 1.18.2)
+- HTTP 402 → quota/billing limit hit; message may carry `— upgrade: <url>` when the server provides one (since CLI 1.18.0)
+- HTTP 429 → rate-limited; message may carry `(retry after <N>s)` when the server sends a `Retry-After` header (since CLI 1.18.0)
 
 ### Exit codes
 

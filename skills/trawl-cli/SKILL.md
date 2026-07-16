@@ -25,11 +25,12 @@ The user must have `@trawlme/cli` installed:
 npm install -g @trawlme/cli
 ```
 
-And be authenticated. Three auth paths:
+And be authenticated. Auth paths:
 
-1. **Interactive** — `trawl login` (prompts email/password, stores JWT in `~/.config/trawl-cli/`)
-2. **Env var** — `export TRAWL_TOKEN=<jwt>` (overrides stored token, ideal for CI)
+1. **Interactive** — `trawl login` (prompts email/password, stores JWT via `conf`; on macOS that's `~/Library/Preferences/trawl-cli-nodejs/`, **not** `~/.config/trawl-cli/` — Conf's `env-paths` dependency hardcodes `Library/Preferences` and ignores XDG. Override the location with `TRAWL_CONFIG_DIR`.)
+2. **Env var** — `export TRAWL_TOKEN=<jwt>` (overrides stored token, ideal for CI; `trawl token` also resolves it — see MCP bridge below)
 3. **Token flag** — `trawl login --token <jwt>`
+4. **Email/password flags** — `trawl login -e <email> -p <password>` (non-interactive; `-p` on the command line is visible in process list/shell history — CI only, prefer the interactive password prompt otherwise)
 
 Custom API base: `trawl login --url https://self-hosted.example.com`. Default is `https://api.trawl.me`.
 
@@ -39,6 +40,7 @@ CI-relevant env vars. The first three are per-invocation session overrides — t
 - `TRAWL_TOKEN` — session JWT, takes precedence over `trawl login`'s stored token
 - `TRAWL_API_URL` — API base URL, takes precedence over `trawl login --url`
 - `TRAWL_TIMEOUT` — per-request fetch timeout in ms (default 30000)
+- `DEBUG` — any truthy value prints the full error stack trace to stderr, same effect as the global `--debug` flag
 
 `TRAWL_CONFIG_DIR` is different — it **redirects where the CLI reads and writes** its config file (so `trawl login` persists there). Point it at an ephemeral dir for hermetic runs, e.g. `TRAWL_CONFIG_DIR=$(mktemp -d)`.
 
@@ -73,6 +75,17 @@ trawl scraps data <id> --json              # last run output (the scraped data)
 - `--errors` — show failure diagnostics inline when the last run failed.
 - `--json` — machine-readable output.
 
+**Honest data states (since CLI 1.18.2):** `[]` is reserved for a genuine zero-item run. Every other outcome is a distinct error envelope instead of a silent empty array:
+
+| State | Result |
+|---|---|
+| Genuine zero-item run (incl. a run with `statusDetail: 'empty'`) | `[]`, exit `0` |
+| Scrap has never run | error, exit `4`, kind `not_found` — "Run it first... or pass --fresh" |
+| Last run failed (`status: false` and not `empty`) | error, exit `1`, kind `run_failed` — points to `--errors` |
+| Payload aged out of retention (server keeps only the newest row per scrap+status bucket) | error, exit `4`, kind `not_found` |
+
+Before 1.18.2 all four states collapsed into the same `[]` / "No data yet." — never assume "no data" from an empty result without checking the exit code.
+
 ### Create a scrap
 
 ```bash
@@ -87,6 +100,7 @@ Flags:
 - `-d, --description` — what the scrap does (used by wizard few-shot examples + future marketplace listing)
 - `-r, --request` — the Puppeteer script body (must call `returnData(arr)`)
 - `--tier tier0..tier4` — request a starting proxy tier (see Proxy tiers below)
+- `--json` — output the full scrap object as JSON; a refused tier returns the standard error envelope + exit `1` instead (see Proxy tiers below)
 
 For the script body, see the `trawl-scrap-design` skill.
 
@@ -104,15 +118,19 @@ trawl scraps update <id> -p '[{"TRAWL.page":"2"}]'          # runtime params: JS
 trawl scraps update <id> --params-file ./params.json        # bulk params from file (same array shape)
 trawl scraps update <id> --tier tier2                       # request a proxy tier
 trawl scraps update <id> --force-tier tier4                 # raise the tier CEILING past the auto-cap
+trawl scraps update <id> --tier tier2 --json                # full scrap JSON, or error envelope + exit 1 on refusal
 ```
 
 > **GTM seed scraps:** always run `trawl scraps update <id> --autofix --cron '0 0 * * 0'` post-create (weekly schedule + AI Fix enabled).
 
 ### Proxy tiers
 
-- `--tier tier0..tier4` (create + update) — requests a starting proxy tier. It's **clamped to tier3** if the target domain isn't allow-listed for tier4, even though the flag accepts `tier4` without error. On `update`, the CLI **echoes** the clamp (`⚠ proxyTier requested tier4 → applied tier3`); on `create` (and older servers) the clamp is silent — so don't rely on seeing a warning.
-- `--force-tier tier0..tier4` (update only) — raises the tier **ceiling** past that auto-cap. History-gated: the server may refuse it (the CLI prints `✗ tier ceiling override refused` and exits `1`) or it may cost more, depending on the scrap's run history.
-- Either way, verify what tier a run actually used with `trawl scraps history <id>` / `trawl scraps run-info <hid>` (the `history` list may show these columns blank — drill into `run-info` for the confirmed value) — don't assume the requested tier was honored.
+- `--tier tier0..tier4` (create + update) — requests a starting proxy tier. It's **clamped to tier3** if the target domain isn't allow-listed for tier4, even though the flag accepts `tier4` without error.
+- Since CLI 1.18.2, **both `create` and `update`** read `_tierOverride` back from the server and render the same honest truth (previously only `update` echoed the clamp; `create` was silent): a clamp (`⚠ proxyTier requested tier4 → applied tier3`), an allowed ceiling raise (+ spend warning if any), or a refusal.
+- **Old-server fallback (since CLI 1.18.2):** if a tier was requested but the response carries no `_tierOverride` at all, the CLI no longer echoes the requested value as if it were applied — it prints `⚠ Server did not confirm the tier change (older server) — verify with: trawl scraps get <id>` instead. Never assume the requested tier was honored on an unconfirmed response.
+- `--force-tier tier0..tier4` (update only) — raises the tier **ceiling** past that auto-cap. History-gated: the server may refuse it (the CLI prints `✗ tier ceiling override refused: <reason>` and exits `1`) or it may cost more, depending on the scrap's run history.
+- `--json` (create + update, since CLI 1.18.2): success returns the full scrap object including `_tierOverride`; a refused tier returns the standard error envelope on stdout and exits `1` — same outcome as human mode, just machine-readable.
+- Either way, verify what tier a run actually used with `trawl scraps history <id>` / `trawl scraps run-info <hid>` (on servers released before mid-July 2026 the `history` list shows these columns blank — `run-info` always has them) — don't assume the requested tier was honored.
 
 ### Run / trigger / watch
 
@@ -133,23 +151,23 @@ trawl scraps run-info <hid>                 # one run's detail by its history id
 trawl scraps run-info <hid> --json
 ```
 
-`doctor`/`autofix` (below) inspect the **last** run; `history` + `run-info` reach **any** run: list with `history`, then pass a run's `hid` to `run-info` for the full diagnosis. `run-info` hits `/api/historys/:hid`, which returns the proxy tier + `failureKind` to the scrap owner. (In `history`'s embedded list those columns may be blank — drill into `run-info <hid>` for them.)
+`doctor`/`autofix` (below) inspect the **last** run; `history` + `run-info` reach **any** run: list with `history`, then pass a run's `hid` to `run-info` for the full diagnosis. `run-info` hits `/api/historys/:hid`, which returns the proxy tier + `failureKind` to the scrap owner, plus the error snapshot (`errorMessage`/selector context) that `history`'s embedded list never carries. (On servers released before mid-July 2026, `history` also shows the tier/failureKind columns blank — `run-info` always has them.)
 
 ### Delete
 
 ```bash
-trawl scraps rm <id>                       # prompts for confirmation
-trawl scraps rm <id> --force               # no prompt, useful in scripts
-trawl scraps delete <id>                   # `delete` is an alias for `rm`, same flags
+trawl scraps delete <id>                   # prompts for confirmation
+trawl scraps delete <id> --force           # no prompt, useful in scripts
+trawl scraps rm <id>                       # `rm` is an alias for `delete`, same flags
 ```
 
 ## Scrap accounts
 
-For per-scrap authentication, see the `trawl-scrap-account` skill. CLI commands: `trawl scraps account set/status/clear-session/delete`.
+For per-scrap authentication, see the `trawl-scrap-account` skill. CLI commands: `trawl scraps account set/status/clear-session/delete`, plus `trawl scraps account session set <id>` (upload BYO-cookies).
 
 ## MCP bridge
 
-`trawl token` prints the stored session JWT to **stdout** (any advisory text, e.g. expiry, goes to stderr — safe to capture stdout alone).
+`trawl token` prints the stored session JWT to **stdout** (any advisory text, e.g. expiry, goes to stderr — safe to capture stdout alone). Since CLI 1.18.2 it resolves `TRAWL_TOKEN` before the stored config token (same precedence every other token consumer uses), so it works headless in CI/agents without a prior `trawl login`: `TRAWL_TOKEN=<jwt> trawl token` prints straight through. A missing or expired token now exits `3` with kind `auth` (previously exit `1`, kind `unknown` — indistinguishable from an arbitrary bug).
 
 The session JWT authenticates two different ways depending on the endpoint:
 
@@ -199,6 +217,7 @@ trawl scraps run <id> --watch
 
 ## Other commands
 
+- `trawl scraps banner <id> -f <path>` — upload a banner image (jpg/png/webp) for a scrap; see the `trawl-scrap-banner` skill for the full generate + upload pipeline
 - `trawl logout` — clear stored credentials
 - `trawl skills list/install/uninstall/update` — manage the bundled Claude Code skills (this package)
 - `trawl telemetry` — inspect/toggle usage telemetry (`TRAWL_TELEMETRY=0` / `DO_NOT_TRACK=1` env overrides also work)
@@ -215,15 +234,38 @@ Scrap object shape:
   "url": "https://...",
   "request": "var page = ...",
   "scrapper": "puppeteer",
-  "cron": "0 9 * * *" ,
+  "cron": "0 9 * * *",
+  "autoFix": false,
   "params": [{"TRAWL.paramName": "value"}],
-  "lastRun": { "status": "success" | "failure", "duration": 1234, "error": "..." },
+  "history": [
+    {
+      "_id": "...",
+      "status": true,
+      "statusDetail": "success",
+      "time": 4200,
+      "proxyTier": "tier1",
+      "failureKind": null,
+      "blockType": null,
+      "createdAt": "..."
+    }
+  ],
   "createdAt": "...",
-  "updatedAt": "..."
+  "updatedAt": "...",
+  "_tierOverride": { "requestedMaxTier": "tier4", "effectiveMaxTier": "tier3", "refused": false, "reason": "...", "provider": "...", "warning": null }
 }
 ```
 
-`trawl scraps data <id> --json` returns the array passed to `returnData(...)`.
+There is **no `lastRun` field** — that never existed. Last-run status/timing/error all derive from `history[0]` (newest first). The embedded row shape differs by command:
+- `trawl scraps get <id>` — up to 100 rows, each with `status`, `statusDetail`, `time`, `proxyTier`, `failureKind`, `blockType`, `createdAt`
+- `trawl scraps list` — only the single newest row per scrap, with just `status` / `statusDetail` / `createdAt` (no `time`/`proxyTier`/`failureKind`/`blockType` — those come back `undefined`, not `null`); fetch `get <id>` if you need the triage fields
+- `status` — tri-state: `true` (success) / `false` (failure) / `null` (in-flight, no result yet)
+- `statusDetail` — `'success' | 'error' | 'empty' | 'regression' | null` — the fine-grained outcome (`empty` = ran clean but returned 0 items; `regression` = item count dropped sharply vs. history)
+- `proxyTier` / `failureKind` / `blockType` — owner-safe triage fields (not stripped like the admin-only proxy vendor/cost internals), present on `get`'s rows (and therefore on `history`, which reads the same endpoint); never on `list`'s rows. Servers released before mid-July 2026 leave them blank — `run-info <hid>` is always authoritative
+- Full error detail (`errorSnapshot`: `errorMessage`, `selector`, `emptyContext`) is **not** embedded on either — fetch it via `trawl scraps run-info <hid>` or `trawl scraps doctor <id>`
+
+`_tierOverride` is present only on `create`/`update` responses when a tier was requested (see Proxy tiers above) — absent otherwise.
+
+`trawl scraps data <id> --json` returns the array passed to `returnData(...)` — see the honest data states above for what a non-array outcome means.
 
 ## Errors to recognize
 
@@ -232,6 +274,8 @@ Scrap object shape:
 - HTTP 403 → user doesn't own the scrap
 - HTTP 404 → wrong scrap ID
 - HTTP 422 on create/update → missing required field or invalid cron expression
+- HTTP 402 → quota/billing limit hit; message may carry `— upgrade: <url>` when the server provides one (since CLI 1.18.0)
+- HTTP 429 → rate-limited; message may carry `(retry after <N>s)` when the server sends a `Retry-After` header (since CLI 1.18.0)
 
 ### Exit codes
 
@@ -240,15 +284,15 @@ Every command uses these exit codes — check `$?` instead of parsing stderr tex
 | Code | Meaning |
 |---|---|
 | `0` | success |
-| `1` | API error (non-401/404) / unknown error — also **"Not logged in"** (no stored token at all) and commander parse errors (see below) |
-| `2` | usage error — invalid flag **value** / malformed input (bad ObjectId, invalid `--tier` value, malformed `-p` JSON, missing file, `--limit`+`--page` conflict) |
-| `3` | auth error (server **401** — token present but expired/invalid) |
-| `4` | not found (404 — wrong ID) |
+| `1` | unmapped API error (HTTP status other than 401/404) or an unhandled bug — also `scraps data`'s "last run failed" state (kind `run_failed`) and a refused tier override (kind `unknown`) |
+| `2` | usage error — invalid flag/value or malformed input (bad ObjectId, invalid `--tier` value, malformed `-p` JSON, missing file, `--limit`+`--page` conflict) **and, since CLI 1.18.2, commander parse errors** (unknown option/command, missing required arg — previously exit `1`) |
+| `3` | auth error — server **401** (token expired/invalid) **or no stored token at all** (since CLI 1.18.2 — previously exit `1`, kind `unknown`) |
+| `4` | not found — 404, or (for `scraps data`) never-ran / retention-aged-out |
 | `5` | network error (unreachable API, timeout) |
 
 Two edges to know:
-- **No stored token at all** exits `1` with "Not logged in. Run: trawl login" (not `3`). Exit `3` is specifically a server 401 for a token that *was* sent. `trawl token` with no/expired token also exits `1`.
-- **Unknown flags / missing required args** are caught by commander *before* the command runs, so they exit `1` (not `2`) — only bad flag *values* reach the usage-error path (`2`).
+- **No stored token at all** now exits `3` with kind `auth` (`Not logged in. Run: trawl login`) — the same path a real 401 takes. Before CLI 1.18.2 this was a generic exit `1`, kind `unknown`, indistinguishable from an arbitrary bug. `trawl token` follows the same rule.
+- **Unknown flags / missing required args** now exit `2` (usage), same bucket as bad flag *values* — before CLI 1.18.2 commander caught these before the command ran and they fell through to exit `1`.
 
 ### `--json` failure envelope
 
@@ -258,12 +302,13 @@ When a command fails **after argument parsing** with `--json` set, the error goe
 {"error":{"message":"Session expired or invalid. Run: trawl login","kind":"auth","status":401}}
 ```
 
-`kind` is one of `auth` / `not_found` / `api` / `network` / `usage` / `unknown`. `status` is only present for HTTP-backed errors.
+`kind` is one of `auth` / `not_found` / `api` / `network` / `usage` / `unknown`, plus `run_failed` (`scraps data`-specific, not part of the shared classifier). `status` is only present for HTTP-backed errors.
 
-> Caveat: commander-level parse errors (unknown flag, missing required arg) bypass this envelope entirely — even with `--json` you get empty stdout, a plain-text error on stderr, and exit `1`.
+Since CLI 1.18.2, commander-level parse errors (unknown flag, missing required arg) **also** emit the envelope — `{"error":{"message":"...","kind":"usage"}}` (no `status` field) — whenever `--json` appears anywhere on the command line (scanned from raw argv, since parsing fails before any command's own `--json` flag can be read). Exit code `2`. Before 1.18.2 these always bypassed the envelope: empty stdout, a plain-text error on stderr, exit `1`.
 
 ## What this skill does NOT do
 
 - Script body → `trawl-scrap-design`
 - Authentication / session injection → `trawl-scrap-account`
 - Local debugging runs → `trawl-scrap-local-test`
+- Banner image generation + composition pipeline → `trawl-scrap-banner` (this skill only lists the raw `trawl scraps banner` upload command)

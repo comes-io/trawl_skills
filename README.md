@@ -15,6 +15,7 @@ Follows the [Anthropic Agent Skills](https://github.com/anthropics/skills) layou
 | `trawl-scrap-design` | Best practices for writing the Puppeteer script body — selectors, returnData shape, params, validation, anti-patterns. |
 | `trawl-scrap-account` | Authentication — Trawl-managed credentials, BYO-cookies (embedded and persisted flavours), session reuse. |
 | `trawl-scrap-local-test` | Run a scrap locally with headed Chrome before publishing, mirroring the worker entry contract. |
+| `trawl-scrap-banner` | Generate + upload a brand-aware 1200x630 banner image for a scrap. |
 
 ## Install
 
@@ -51,7 +52,7 @@ The CLI bundles the skills and keeps them in sync with the CLI version.
 
 ## Migrating from v0.1.x
 
-In v0.1.x there was a single skill named `trawl`. v0.2.0 splits it into four focused skills (see the bundled skills table above). When you run `npx @trawlme/skills install` (or `update`), the installer detects the legacy `~/.claude/skills/trawl/` directory and removes it before installing the new four. No manual cleanup needed.
+In v0.1.x there was a single skill named `trawl`. v0.2.0 split it into four focused skills; `trawl-scrap-banner` was added later, bringing the total to the five listed in the bundled skills table above. When you run `npx @trawlme/skills install` (or `update`), the installer detects the legacy `~/.claude/skills/trawl/` directory and removes it before installing the current set. No manual cleanup needed.
 
 Restart Claude Code after the install for the new skills to be picked up.
 

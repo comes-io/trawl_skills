@@ -5,7 +5,7 @@ description: Use when scraping a site that requires authentication. Triggers on 
 
 # Trawl Scrap Account
 
-Use when the target site requires authentication. Covers three flows: Trawl-managed credentials (legacy), BYO-cookies embedded in the script (flavour A), and BYO-cookies persisted via the Trawl API (flavour B).
+Use when the target site requires authentication. Covers three flows: Trawl-managed credentials (server-stored, still recommended for plain username/password logins), BYO-cookies embedded in the script (flavour A), and BYO-cookies persisted via the Trawl API (flavour B).
 
 ## The worker boundary
 
@@ -21,7 +21,7 @@ Injecting cookies does not change the worker's fingerprint policy.
 
 3. **MFA, SSO, OAuth, or you don't want to hand credentials to Trawl** → use **Flavour B — Persisted BYO-cookies**. Export cookies from a logged-in browser session, push them into `TRAWL.account.session.cookies` via UI, CLI, or API, and the script reads them back before navigation. Cookies are encrypted at rest.
 
-## Trawl-managed credentials (legacy flow)
+## Trawl-managed credentials (server-stored, still supported)
 
 The worker injects the account credentials under `TRAWL.account`:
 

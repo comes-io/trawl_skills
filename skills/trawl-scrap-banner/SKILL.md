@@ -27,13 +27,13 @@ Search Wikimedia Commons for the official brand SVG. Sanitize `siteName` first �
 
 ```bash
 # Canonical Commons API (not Wikipedia) — broadest logo coverage
-SITE_TITLE="${siteName^}_logo.svg"   # capitalize first letter: ebay → Ebay_logo.svg
+SITE_TITLE="$(printf '%s' "$siteName" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')_logo.svg"   # capitalize first letter: ebay → Ebay_logo.svg (portable — ${siteName^} is Bash-4-only and errors with "bad substitution" (exit 1) on macOS's Bash 3.2)
 curl -s "https://commons.wikimedia.org/w/api.php?action=query&titles=File:${SITE_TITLE}&prop=imageinfo&iiprop=url&format=json" \
   -H "User-Agent: Mozilla/5.0" | jq -r '.query.pages | to_entries[0].value.imageinfo[0].url // empty' \
   > /tmp/${siteName}-logo-url.txt
 ```
 
-The `${siteName^}_logo.svg` heuristic (capitalize first letter) fails for compound brands. Use the table below first:
+The capitalize-first-letter heuristic (`Ebay_logo.svg`) fails for compound brands. Use the table below first:
 
 | siteName | Wikimedia file |
 |---|---|
@@ -50,7 +50,7 @@ The `${siteName^}_logo.svg` heuristic (capitalize first letter) fails for compou
 | tiktok | `TikTok_logo.svg` |
 | booking | `Booking.com_logo.svg` |
 
-If the brand is not in the table, try the `${siteName^}_logo.svg` heuristic, then PNG fallback via thumb endpoint: `https://upload.wikimedia.org/wikipedia/commons/thumb/.../1200px-....png`
+If the brand is not in the table, try the capitalize-first-letter heuristic above, then PNG fallback via thumb endpoint: `https://upload.wikimedia.org/wikipedia/commons/thumb/.../1200px-....png`
 
 ```bash
 # Download
@@ -95,11 +95,17 @@ Linux / CI: replace with `google-chrome` or `chromium-browser` (same flags). On 
 
 ### 5. Upload
 
+Requires an authenticated CLI session first — `trawl login` (or `TRAWL_TOKEN` env / `-t` on `login`). Not logged in at all → exit `1` ("Not logged in"); an expired/invalid token → exit `3` (server 401).
+
 ```bash
 trawl scraps banner ${scrapId} -f /tmp/${siteName}-banner.png
 ```
 
+`-f/--file` also accepts `.jpg` and `.webp`, not just `.png` — webp gives smaller uploads for the same visual quality if size matters.
+
 CLI confirms upload. Banner is immediately visible on trawl.me.
+
+**Failure detection:** `banner` has **no `--json` mode** — the exit code is the only machine-readable signal. `0` = uploaded; non-zero = failed: `1` not logged in (no token) / other error, `3` expired-or-invalid token (401), `4` wrong `scrapId` (404), `5` network. Check `$?`, don't parse stdout for success/failure.
 
 ## Conventions
 

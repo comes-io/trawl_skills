@@ -260,7 +260,7 @@ There is **no `lastRun` field** — that never existed. Last-run status/timing/e
 - `trawl scraps list` — only the single newest row per scrap, with just `status` / `statusDetail` / `createdAt` (no `time`/`proxyTier`/`failureKind`/`blockType` — those come back `undefined`, not `null`); fetch `get <id>` if you need the triage fields
 - `status` — tri-state: `true` (success) / `false` (failure) / `null` (in-flight, no result yet)
 - `statusDetail` — `'success' | 'error' | 'empty' | 'regression' | null` — the fine-grained outcome (`empty` = ran clean but returned 0 items; `regression` = item count dropped sharply vs. history)
-- `proxyTier` / `failureKind` / `blockType` — owner-safe triage fields (not stripped like the admin-only proxy vendor/cost internals), present on `get`'s rows only
+- `proxyTier` / `failureKind` / `blockType` — owner-safe triage fields (not stripped like the admin-only proxy vendor/cost internals), present on `get`'s rows (and therefore on `history`, which reads the same endpoint); never on `list`'s rows. Servers released before mid-July 2026 leave them blank — `run-info <hid>` is always authoritative
 - Full error detail (`errorSnapshot`: `errorMessage`, `selector`, `emptyContext`) is **not** embedded on either — fetch it via `trawl scraps run-info <hid>` or `trawl scraps doctor <id>`
 
 `_tierOverride` is present only on `create`/`update` responses when a tier was requested (see Proxy tiers above) — absent otherwise.

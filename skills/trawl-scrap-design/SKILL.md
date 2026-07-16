@@ -22,7 +22,7 @@ Selector priority (most to least resilient):
 3. Stable class (short, non-generated, meaningful name)
 4. XPath with text anchor — use when no attribute is reliable
 
-**One named selector per logical field.** Declare as constants at the top with a comment explaining the choice — AI Fix uses that context to pick a replacement when the selector breaks.
+**One named selector per logical field.** Declare as constants at the top with a comment explaining the choice — AI Fix uses that context to pick a replacement when the selector breaks. AI Fix is toggled per-scrap with `trawl scraps update <id> --autofix` / `--no-autofix`; inspect what it actually did with `trawl scraps doctor <id> --autofix` (last-run diagnosis + autofix outcome) or `trawl scraps autofix <id>` (decision, diff, dry-run, knowledge) — see the `trawl-cli` skill.
 
 ```js
 // data-testid is stable — the engineering team committed to never removing it
@@ -81,15 +81,15 @@ returnData([
 ## Params
 
 - **`TRAWL.url`** — the target URL, set by the scrap schedule. Treat as immutable; never override it.
-- **`TRAWL.<custom>`** — any custom parameter defined in Settings → Parameters.
-- **`RANDOM(...)`** — a helper that returns a random value from a list (see Trawl params docs).
-- **`DATE(±N, unit, format)`** — a date helper that returns a formatted date offset from now.
+- **`TRAWL.<custom>`** — any custom parameter defined in Settings → Parameters (UI), or provisioned via the CLI: `trawl scraps update <id> -p/--params '[{"TRAWL.<name>":"<value>"}]'` (JSON array) or `--params-file <path>` for bulk — see the `trawl-cli` skill.
+- **`RANDOM(...)`** — a helper that returns a random value from a list (see Trawl params docs). *Signature not independently re-verified against the worker runtime as part of this pass — treat as provisional.*
+- **`DATE(±N, unit, format)`** — a date helper that returns a formatted date offset from now. *Signature not independently re-verified against the worker runtime as part of this pass — treat as provisional.*
 
 Validate inputs early — throw before any network call if a required param is missing.
 
 ```js
 const { url, category } = TRAWL;
-if (!category) throw new Error('Missing required param: category (set in Settings → Parameters)');
+if (!category) throw new Error('Missing required param: category (set in Settings → Parameters, or `trawl scraps update <id> -p \'[{"TRAWL.category":"value"}]\'`)');
 
 await page.goto(url, { waitUntil: 'domcontentloaded' });
 ```
@@ -120,7 +120,12 @@ try {
 
 ## Hard anti-bot sites
 
-The platform auto-escalates proxy tiers when a run comes back empty — you usually don't manage tiers at all. For a site you *know* is heavily protected, you can pin a higher tier from the start so the first run doesn't waste a cycle; the top tier passes most protections. That's the whole knob. Don't try to outsmart protection in your script — return what you can and let the platform escalate.
+The platform auto-escalates proxy tiers when a run comes back empty — you usually don't manage tiers at all. For a site you *know* is heavily protected, there are two CLI knobs (see the `trawl-cli` skill for full flag docs):
+
+- `trawl scraps update <id> --tier tier0..tier4` — requests a starting tier so the first run doesn't waste a cycle. **It's clamped to tier3 for domains that aren't allow-listed for tier4** — requesting `tier4` does not error, it just gets capped. On `update` the CLI echoes the clamp (`⚠ proxyTier requested tier4 → applied tier3`); on `create`/older servers it's silent.
+- `trawl scraps update <id> --force-tier tier0..tier4` — raises the tier **ceiling** past that auto-cap. History-gated: the server may refuse it (CLI exits `1`) or it may cost more, depending on the scrap's run history.
+
+Don't assume the requested tier was honored — verify with `trawl scraps history <id>` / `trawl scraps run-info <hid>` after a run. Don't try to outsmart protection in your script — return what you can and let the platform escalate.
 
 ## Anti-patterns (don't do this)
 

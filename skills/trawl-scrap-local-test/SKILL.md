@@ -19,7 +19,10 @@ Paths below assume the default install location (`~/.claude/skills/`); adjust if
 
 ```bash
 # Install puppeteer-core once (it's a peer dependency, not bundled with the skill).
-npm install -g puppeteer-core
+# Must be installed IN the skill directory — the harness does a bare ESM
+# `import('puppeteer-core')` which resolves relative to the skill dir, not
+# global/CWD/NODE_PATH, so a global install won't satisfy it.
+cd ~/.claude/skills/trawl-scrap-local-test && npm install puppeteer-core
 
 # Run a scrap locally:
 node ~/.claude/skills/trawl-scrap-local-test/scripts/run-local.mjs path/to/scrap.js \
@@ -57,6 +60,7 @@ No changes to the script body are needed to run it locally.
 - `--remote` — connects to an existing Chrome at `http://127.0.0.1:9222` (instead of launching a fresh one). Useful for MFA flows — see `references/headed-debug.md`.
 - `--headless` — launches Chrome headlessly (no window). Default is headed (`headless: false`) for interactive debugging.
 - `--chrome=<path>` — path to a Chrome executable. Auto-detected on macOS and Linux when omitted; pass explicitly if Chrome lives in a non-standard location or you want to use Chromium.
+- `--slowMo=<ms>` — delay between Puppeteer actions, in ms. Default is 250 in headed mode, 0 in headless. Lower for speed, higher to watch each action.
 - `--help` — prints usage.
 
 ## Recommended workflow

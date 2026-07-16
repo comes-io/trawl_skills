@@ -19,13 +19,14 @@ Flags:
   --remote                     connect to existing Chrome at 127.0.0.1:9222
   --headless                   launch Chrome in headless mode (no window)
   --chrome=<path>              path to Chrome executable (auto-detected if omitted)
+  --slowMo=<ms>                delay between Puppeteer actions, in ms (default: 250 headed, 0 headless)
   --help                       this message
 `);
 }
 
 if (args.length === 0 || args.includes('--help')) {
   help();
-  process.exit(args.length === 0 ? 1 : 0);
+  process.exit(args.length === 0 ? 2 : 0);
 }
 
 const positional = args.filter((a) => !a.startsWith('--'));
@@ -42,10 +43,15 @@ const scrapPath = positional[0];
 if (!scrapPath) {
   console.error('Missing scrap file argument');
   help();
-  process.exit(1);
+  process.exit(2);
 }
 
-const scrapBody = readFileSync(resolve(scrapPath), 'utf8');
+const resolvedScrapPath = resolve(scrapPath);
+if (!existsSync(resolvedScrapPath)) {
+  console.error(`Scrap file not found: ${scrapPath}`);
+  process.exit(2);
+}
+const scrapBody = readFileSync(resolvedScrapPath, 'utf8');
 
 const { TRAWL, account } = buildContext(flags);
 
@@ -53,7 +59,9 @@ let puppeteer;
 try {
   puppeteer = await import('puppeteer-core');
 } catch {
-  console.error('puppeteer-core not installed. Run: npm install -g puppeteer-core');
+  console.error(
+    'puppeteer-core not installed. Run: cd ~/.claude/skills/trawl-scrap-local-test && npm install puppeteer-core'
+  );
   process.exit(1);
 }
 
@@ -77,7 +85,7 @@ if (flags.remote) {
   if (typeof flags.chrome === 'string') {
     if (!existsSync(flags.chrome)) {
       console.error(`Chrome not found at: ${flags.chrome}`);
-      process.exit(1);
+      process.exit(2);
     }
     executablePath = flags.chrome;
   } else {
@@ -88,10 +96,26 @@ if (flags.remote) {
     }
   }
 
+  const slowMoDefault = flags.headless ? 0 : 250;
+  let slowMo = slowMoDefault;
+  if (flags.slowMo !== undefined) {
+    // `--slowMo` with no `=value` parses to boolean `true` — that's a usage error,
+    // not `Number(true) === 1`.
+    if (flags.slowMo === true) {
+      console.error('--slowMo requires a value, e.g. --slowMo=250');
+      process.exit(2);
+    }
+    slowMo = Number(flags.slowMo);
+    if (Number.isNaN(slowMo)) {
+      console.error(`Invalid --slowMo value: ${flags.slowMo} (must be a number)`);
+      process.exit(2);
+    }
+  }
+
   browser = await puppeteer.default.launch({
     executablePath,
     headless: !!flags.headless,
-    slowMo: flags.headless ? 0 : 250,
+    slowMo,
     devtools: !flags.headless,
     args: ['--no-sandbox'],
   });

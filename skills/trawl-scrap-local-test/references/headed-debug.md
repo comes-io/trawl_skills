@@ -4,7 +4,7 @@ Advanced debugging flags and techniques for `run-local.mjs`.
 
 ## Default flags
 
-The harness launches Chrome with `headless: false`, `slowMo: 250`, `devtools: true`. Tune `slowMo` between 100 and 500 — lower is faster, higher lets you watch each action.
+The harness launches Chrome with `headless: false`, `slowMo: 250`, `devtools: true`. Tune `slowMo` with the `--slowMo=<ms>` flag, e.g. `run-local.mjs scrap.js --slowMo=500` — lower is faster, higher lets you watch each action. Defaults to `0` automatically under `--headless`.
 
 ## Pause inside page.evaluate
 

@@ -56,11 +56,14 @@ trawl scraps list --json                   # JSON array
 trawl scraps list --status failure         # filter by last-run status
 trawl scraps list --status success
 trawl scraps list --status never           # never run
+trawl scraps list --status running         # run currently executing (status: null)
 trawl scraps list --limit 10               # cap output client-side
 trawl scraps list --page 2                 # single-page mode (one 50-row page)
 ```
 
-> **Pagination:** `list` fetches **all** scraps by default (it auto-paginates internally at 200/page until a short page). `--page N` switches to single-page mode — one 50-row page, no auto-pagination. `--limit N` caps the output client-side. `--limit` and `--page` are mutually exclusive (usage error, exit 2). Because the default fetches everything, a `jq`-by-title lookup over `list --json` sees every scrap — no page-1 blind spot.
+> **Pagination:** `list` fetches **all** scraps by default (it auto-paginates internally at 200/page until a short page). `--page N` switches to single-page mode — one 50-row page, no auto-pagination. `--limit N` caps the output client-side. `--limit` and `--page` are mutually exclusive (usage error, exit 2). **Since CLI 1.18.3**, a non-numeric `--limit`/`--page` value (e.g. `abc`) is also a usage error, exit `2` — before 1.18.3 it silently became `NaN`, which truncated results to 0 rows or sent a bare `?page=NaN` to the server with no warning. Because the default fetches everything, a `jq`-by-title lookup over `list --json` sees every scrap — no page-1 blind spot.
+
+**Since CLI 1.18.3**, a scrap whose last run is still executing (`status: null` server-side) renders as `running` — a cyan `↻` in the table, matched by `--status running`. Previously an in-flight run had no distinct state anywhere in `list`.
 
 ### Inspect a single scrap
 
@@ -75,16 +78,18 @@ trawl scraps data <id> --json              # last run output (the scraped data)
 - `--errors` — show failure diagnostics inline when the last run failed.
 - `--json` — machine-readable output.
 
-**Honest data states (since CLI 1.18.2):** `[]` is reserved for a genuine zero-item run. Every other outcome is a distinct error envelope instead of a silent empty array:
+**Honest data states (since CLI 1.18.2, extended 1.18.3):** `[]` is reserved for a genuine zero-item run. Every other outcome is a distinct error envelope instead of a silent empty array — except a regression, which is a degraded *success*, not an error:
 
 | State | Result |
 |---|---|
 | Genuine zero-item run (incl. a run with `statusDetail: 'empty'`) | `[]`, exit `0` |
+| Run in progress (`status: null` — the run is still executing, node persists `{status:null, statusDetail:null, inFlight:true}` the instant a run starts) | error, exit `1`, kind `in_progress` — "Run in progress — retry shortly"; never suggests `--fresh` (the run already holds the server-side lock, so `--fresh` would just 429 against it) — **since CLI 1.18.3** |
+| Item count regressed vs baseline (`statusDetail: 'regression'`) | the **real, non-empty items** on stdout, exit `0` — plus a stderr warning pointing at `trawl scraps doctor <id>` for diagnosis. The write persisted before the regression was flagged, so treating it as a failure would hide genuine data behind a false negative — **since CLI 1.18.3** |
 | Scrap has never run | error, exit `4`, kind `not_found` — "Run it first... or pass --fresh" |
-| Last run failed (`status: false` and not `empty`) | error, exit `1`, kind `run_failed` — points to `--errors` |
-| Payload aged out of retention (server keeps only the newest row per scrap+status bucket) | error, exit `4`, kind `not_found` |
+| Last run failed (`status: false`, not `empty`, not `regression`) | error, exit `1`, kind `run_failed` — points to `--errors` |
+| Payload aged out of retention (server keeps only the newest row per scrap+status bucket) — **including an aged-out regression row**, which gets this same envelope instead of fabricated items | error, exit `4`, kind `not_found` |
 
-Before 1.18.2 all four states collapsed into the same `[]` / "No data yet." — never assume "no data" from an empty result without checking the exit code.
+Before 1.18.2 the zero-item/never-run/failed/aged-out states collapsed into the same `[]` / "No data yet." Before 1.18.3, a run still in progress fell through to the misleading "aged out of retention" message (status `null` isn't `false`, so it skipped the failure check, then found no persisted payload yet), and a regression row was misclassified as `run_failed` — hiding real, already-persisted items behind an error. Never assume "no data" from an empty result without checking the exit code and `kind`.
 
 ### Create a scrap
 
@@ -127,9 +132,9 @@ trawl scraps update <id> --tier tier2 --json                # full scrap JSON, o
 
 - `--tier tier0..tier4` (create + update) — requests a starting proxy tier. It's **clamped to tier3** if the target domain isn't allow-listed for tier4, even though the flag accepts `tier4` without error.
 - Since CLI 1.18.2, **both `create` and `update`** read `_tierOverride` back from the server and render the same honest truth (previously only `update` echoed the clamp; `create` was silent): a clamp (`⚠ proxyTier requested tier4 → applied tier3`), an allowed ceiling raise (+ spend warning if any), or a refusal.
-- **Old-server fallback (since CLI 1.18.2):** if a tier was requested but the response carries no `_tierOverride` at all, the CLI no longer echoes the requested value as if it were applied — it prints `⚠ Server did not confirm the tier change (older server) — verify with: trawl scraps get <id>` instead. Never assume the requested tier was honored on an unconfirmed response.
+- **Old-server fallback (since CLI 1.18.2):** if a tier was requested but the response carries no `_tierOverride` at all, the CLI no longer echoes the requested value as if it were applied — it prints `⚠ Server did not confirm the tier change (older server) — verify with: trawl scraps get <id>` instead. Never assume the requested tier was honored on an unconfirmed response. **Since CLI 1.18.3**, `--json` carries the same signal in machine-readable form: the emitted scrap object gets `"_tierUnconfirmed": true` under exactly this condition (tier requested, no `_tierOverride` in the response) — the counterpart to the stderr warning, since a `--json` caller has no reliable reason to read stderr. Never present when `_tierOverride` came back, never fabricated otherwise.
 - `--force-tier tier0..tier4` (update only) — raises the tier **ceiling** past that auto-cap. History-gated: the server may refuse it (the CLI prints `✗ tier ceiling override refused: <reason>` and exits `1`) or it may cost more, depending on the scrap's run history.
-- `--json` (create + update, since CLI 1.18.2): success returns the full scrap object including `_tierOverride`; a refused tier returns the standard error envelope on stdout and exits `1` — same outcome as human mode, just machine-readable.
+- `--json` (create + update, since CLI 1.18.2): success returns the full scrap object; when a tier was requested it carries **either** `_tierOverride` (the server confirmed — inspect it for the applied/clamped/refused truth) **or** `_tierUnconfirmed: true` (old server, unconfirmed — see the fallback bullet above), never both, and neither when no tier was requested. A refused tier returns the standard error envelope on stdout and exits `1` — same outcome as human mode, just machine-readable.
 - Either way, verify what tier a run actually used with `trawl scraps history <id>` / `trawl scraps run-info <hid>` (on servers released before mid-July 2026 the `history` list shows these columns blank — `run-info` always has them) — don't assume the requested tier was honored.
 
 ### Run / trigger / watch
@@ -172,13 +177,21 @@ For per-scrap authentication, see the `trawl-scrap-account` skill. CLI commands:
 The session JWT authenticates two different ways depending on the endpoint:
 
 ```bash
-# MCP endpoint — accepts the session JWT as a Bearer token:
-curl -H "Authorization: Bearer $(trawl token)" https://api.trawl.me/api/mcp
+# MCP endpoint — accepts the session JWT as a Bearer token. This is a real,
+# runnable JSON-RPC 2.0 call (tools/list) against the Streamable HTTP
+# transport — verified against trawl_node's mcp.controller.js:
+curl -X POST https://api.trawl.me/api/mcp \
+  -H "Authorization: Bearer $(trawl token)" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 
 # Raw REST (/api/scraps, etc.) — the JWT strategy is COOKIE-ONLY (reads the TOKEN cookie).
 # Bearer is NOT accepted here; pass the JWT as the TOKEN cookie instead:
 curl -H "Cookie: TOKEN=$(trawl token)" https://api.trawl.me/api/scraps
 ```
+
+`/api/mcp` only accepts `POST`. `GET` (and `DELETE`) return a JSON-RPC-shaped `405` — this server runs the stateless Streamable HTTP transport, which has no use for the SSE-resume/session-close semantics those methods exist for elsewhere in the spec. Always POST a JSON-RPC envelope. The `Accept` header must list **both** `application/json` and `text/event-stream` — the SDK transport rejects a POST with either one missing as `406 Not Acceptable` (`Client must accept both application/json and text/event-stream`), regardless of auth.
 
 ## Common patterns
 
@@ -202,6 +215,8 @@ trawl scraps snapshot <id> --error -o /tmp/error.html   # download the error-pat
 trawl scraps snapshot <id> -o /tmp/page.html      # download the captured page HTML
 ```
 Note: the CLI surfaces the abstract proxy Tier (0–4) + diagnostics + autofix, but **not** cost or proxy nature/IP/vendor — those are admin-only by design.
+
+**No-runs shape, unified across commands:** `doctor --json`, `autofix --json`, and (**since CLI 1.18.3**) `data --errors --json` all return `{"status":"no_runs"}` (exit `0`) for a scrap that has **never run** — `doctor` had this shape since CLI 1.18.0; `autofix`/`data --errors` joined it in 1.18.3 (both used to return a bare `null`, indistinguishable from any other absent-payload state). Don't confuse it with `autofix --json`'s bare `null`, which means a run *did* happen but had no auto-fix attempt on it — genuinely "no data", a different state from "never ran at all". A run still **in progress** shows a `running` badge on `doctor`/`data --errors` (human mode) — never `failed` (**since CLI 1.18.3**).
 
 **"Create a job that runs every morning"**
 ```bash
@@ -284,15 +299,16 @@ Every command uses these exit codes — check `$?` instead of parsing stderr tex
 | Code | Meaning |
 |---|---|
 | `0` | success |
-| `1` | unmapped API error (HTTP status other than 401/404) or an unhandled bug — also `scraps data`'s "last run failed" state (kind `run_failed`) and a refused tier override (kind `unknown`) |
-| `2` | usage error — invalid flag/value or malformed input (bad ObjectId, invalid `--tier` value, malformed `-p` JSON, missing file, `--limit`+`--page` conflict) **and, since CLI 1.18.2, commander parse errors** (unknown option/command, missing required arg — previously exit `1`) |
+| `1` | unmapped API error (HTTP status other than 401/404) or an unhandled bug — also `scraps data`'s "last run failed" (kind `run_failed`) and "run in progress" (kind `in_progress`, **since CLI 1.18.3**) states, and a refused tier override (kind `unknown`) |
+| `2` | usage error — invalid flag/value or malformed input (bad ObjectId, invalid `--tier` value, malformed `-p` JSON, missing file, `--limit`+`--page` conflict, **since CLI 1.18.3 a non-numeric `--limit`/`--page` value**) **and, since CLI 1.18.2, commander parse errors** (unknown option/command, missing required arg — previously exit `1`) |
 | `3` | auth error — server **401** (token expired/invalid) **or no stored token at all** (since CLI 1.18.2 — previously exit `1`, kind `unknown`) |
 | `4` | not found — 404, or (for `scraps data`) never-ran / retention-aged-out |
 | `5` | network error (unreachable API, timeout) |
 
-Two edges to know:
+Edges to know:
 - **No stored token at all** now exits `3` with kind `auth` (`Not logged in. Run: trawl login`) — the same path a real 401 takes. Before CLI 1.18.2 this was a generic exit `1`, kind `unknown`, indistinguishable from an arbitrary bug. `trawl token` follows the same rule.
 - **Unknown flags / missing required args** now exit `2` (usage), same bucket as bad flag *values* — before CLI 1.18.2 commander caught these before the command ran and they fell through to exit `1`.
+- **Local auth failures never carry `status:401` (since CLI 1.18.3):** "no stored token" and `trawl token`'s own "locally-decoded expired token" check both fail entirely client-side — no HTTP call was made, so the `--json` envelope is `{"error":{"message":"...","kind":"auth"}}` with **no `status` field**. Only a real server-issued 401 response carries `status:401`. Exit code and `kind` are unchanged (still `3` / `auth`) — only the envelope shape differs. Before 1.18.3 the local case fabricated `status:401` as if the server had said so.
 
 ### `--json` failure envelope
 
@@ -302,9 +318,15 @@ When a command fails **after argument parsing** with `--json` set, the error goe
 {"error":{"message":"Session expired or invalid. Run: trawl login","kind":"auth","status":401}}
 ```
 
-`kind` is one of `auth` / `not_found` / `api` / `network` / `usage` / `unknown`, plus `run_failed` (`scraps data`-specific, not part of the shared classifier). `status` is only present for HTTP-backed errors.
+A local auth failure (no token / expired-token check with no HTTP round trip — see the edge above) omits `status` entirely:
 
-Since CLI 1.18.2, commander-level parse errors (unknown flag, missing required arg) **also** emit the envelope — `{"error":{"message":"...","kind":"usage"}}` (no `status` field) — whenever `--json` appears anywhere on the command line (scanned from raw argv, since parsing fails before any command's own `--json` flag can be read). Exit code `2`. Before 1.18.2 these always bypassed the envelope: empty stdout, a plain-text error on stderr, exit `1`.
+```json
+{"error":{"message":"Not logged in. Run: trawl login","kind":"auth"}}
+```
+
+`kind` is one of `auth` / `not_found` / `api` / `network` / `usage` / `unknown`, plus `run_failed` and `in_progress` (both `scraps data`-specific, not part of the shared classifier). `status` is only present for real HTTP-backed errors.
+
+Since CLI 1.18.2, commander-level parse errors (unknown flag, missing required arg) **also** emit the envelope — `{"error":{"message":"...","kind":"usage"}}` (no `status` field) — whenever `--json` appears anywhere on the command line (scanned from raw argv, since parsing fails before any command's own `--json` flag can be read). Exit code `2`. Before 1.18.2 these always bypassed the envelope: empty stdout, a plain-text error on stderr, exit `1`. **Since CLI 1.18.3**, that argv scan stops at the first bare `--` (end-of-options): `scraps list -- --json` no longer triggers the envelope, because everything after a literal `--` is a positional argument to commander, not a flag — even one that reads `--json`. Before 1.18.3 an unscoped `argv.includes('--json')` still matched it and wrongly emitted a JSON envelope for a plain usage error that never actually requested `--json`.
 
 ## What this skill does NOT do
 

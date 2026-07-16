@@ -95,7 +95,7 @@ Linux / CI: replace with `google-chrome` or `chromium-browser` (same flags). On 
 
 ### 5. Upload
 
-Requires an authenticated CLI session first — `trawl login` (or `TRAWL_TOKEN` env / `-t` on `login`). Not logged in at all → exit `1` ("Not logged in"); an expired/invalid token → exit `3` (server 401).
+Requires an authenticated CLI session first — `trawl login` (or `TRAWL_TOKEN` env / `trawl login --token <jwt>`). Not logged in at all → exit `1` ("Not logged in"); an expired/invalid token → exit `3` (server 401).
 
 ```bash
 trawl scraps banner ${scrapId} -f /tmp/${siteName}-banner.png

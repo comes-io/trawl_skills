@@ -39,7 +39,7 @@ If the user gets `Session expired or invalid. Run: trawl login`, their stored JW
 CI-relevant env vars. The first three are per-invocation session overrides — they take precedence over stored config without writing to disk (for normal commands; note `trawl login` itself still persists a token even when `TRAWL_TOKEN` is set):
 - `TRAWL_TOKEN` — session JWT, takes precedence over `trawl login`'s stored token
 - `TRAWL_API_URL` — API base URL, takes precedence over `trawl login --url`
-- `TRAWL_TIMEOUT` — per-request fetch timeout in ms (default 30000; 300000 for `scraps run`, `data --fresh`, and `trigger --wait` since CLI 1.18.4 — these hit the same server-side scrap-execute path, which legitimately runs 30-250s; this env var still overrides that longer default too, higher or lower)
+- `TRAWL_TIMEOUT` — per-request fetch timeout in ms (default 30000; 300000 for `scraps run`, `data --fresh`, `trigger --wait` since CLI 1.18.4, and `create` since 2.0.0 — these hit the server-side scrap-execute/AI-wizard paths, which legitimately run 30-250s; this env var still overrides that longer default too, higher or lower — beware: a low global value clamps `create` and triggers the duplicate-on-retry trap described below)
 - `DEBUG` — any truthy value prints the full error stack trace to stderr, same effect as the global `--debug` flag
 
 `TRAWL_CONFIG_DIR` is different — it **redirects where the CLI reads and writes** its config file (so `trawl login` persists there). Point it at an ephemeral dir for hermetic runs, e.g. `TRAWL_CONFIG_DIR=$(mktemp -d)`.
@@ -47,6 +47,22 @@ CI-relevant env vars. The first three are per-invocation session overrides — t
 ## Core commands
 
 All commands accept `--json` (where listed) for machine-readable or pipeable output.
+
+Since CLI **v2.0.0** the agent-facing verbs are also top-level: `trawl list / get / run / data / history / run-info / trigger / whoami / ping / create` (the `trawl scraps <verb>` paths below still work as aliases — zero breaking change, except `trawl fetch`, removed in 2.0.0, see the AI-wizard `create` below which replaced it).
+
+### Create a scrap from a URL + a prompt (AI wizard — the flagship)
+
+```bash
+trawl create https://example.com/products --prompt "track product prices" [--no-autofix] [--json]
+```
+
+One call: the server generates the extraction code (AI), creates a **persistent, self-healing scrap**, and triggers its first run (auto-fix on failure by default). Requires an api-key scoped `trawl:scraps:create` (or a session JWT). Response: `{ success, scrap, historyId }`.
+
+Critical semantics for agents:
+- **NOT idempotent + not instant** — generation + first run legitimately takes 30-250s (the CLI already uses the 300s long-run timeout; a global `TRAWL_TIMEOUT` override clamps it). On a client-side timeout the scrap **may still have been created server-side**: run `trawl list` before retrying — a retry creates a DUPLICATE scrap and burns quota.
+- **Daily schedule by default** — a wizard scrap is created with a daily cron (07:00 UTC); it re-runs and meters every day until you change it (`trawl scraps update <id> --cron <expr>` or `--no-cron`).
+- **`success:false` (exit 1) ≠ retry** — the scrap EXISTS and auto-fix is retrying in the background: poll `trawl data <id>` / `trawl run-info <historyId>`, never re-run `create`.
+- Distinct from `trawl scraps create` below (raw Puppeteer script, no AI).
 
 ### List scraps
 

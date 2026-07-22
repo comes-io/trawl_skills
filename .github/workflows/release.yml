@@ -1,7 +1,23 @@
 name: Release
 
+# Aligned with trawl_cli's release model (2026-07-22): auto-release on every
+# push to main — semantic-release only cuts a version when the commits
+# warrant one (feat/fix/docs per .releaserc releaseRules). workflow_dispatch
+# kept as a manual re-trigger escape hatch. Unlike trawl_cli we do NOT
+# paths-ignore '**/*.md': markdown IS this package's product (docs→patch
+# releaseRule), so md-only pushes must still release.
 on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.claude/**'
   workflow_dispatch:
+
+# Two pushes in quick succession must never race semantic-release on the
+# same npm version/tag (mirrors trawl_cli #88 item 10).
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: write

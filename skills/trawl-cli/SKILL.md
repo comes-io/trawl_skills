@@ -54,9 +54,10 @@ Since CLI **v2.0.0** the agent-facing verbs are also top-level: `trawl list / ge
 
 ```bash
 trawl create https://example.com/products --prompt "track product prices"
+trawl create --url https://example.com/products --prompt "track product prices"   # --url alias, since 2.1.0
 ```
 
-Optional flags: `--no-autofix` (skip the auto-fix retry on a failed first run), `--json` (raw API payload on stdout).
+Optional flags: `--no-autofix` (skip the auto-fix retry on a failed first run), `--json` (raw API payload on stdout), `--url <url>` (**since 2.1.0**) — an alias of the positional `url` argument, for callers that prefer a named flag. Exactly one URL is required: pass the positional OR `--url`, never neither. Passing both is fine only when they're identical; two *different* URLs is a usage error (exit 2) rather than the CLI silently picking one.
 
 One call: the server generates the extraction code (AI), creates a **persistent, self-healing scrap**, and triggers its first run (auto-fix on failure by default). Requires an api-key scoped `trawl:scraps:create` (or a session JWT). Response: `{ success, scrap, historyId }`.
 
@@ -65,6 +66,7 @@ Critical semantics for agents:
 - **NOT idempotent + not instant** — generation + first run legitimately takes 30-250s (the CLI already uses the 300s long-run timeout; a global `TRAWL_TIMEOUT` override clamps it). On a client-side timeout the scrap **may still have been created server-side**: run `trawl list` before retrying — a retry creates a DUPLICATE scrap and burns quota.
 - **Daily schedule by default** — a wizard scrap is created with a daily cron (07:00 UTC); it re-runs and meters every day until you change it (`trawl scraps update <id> --cron <expr>` or `--no-cron`).
 - **`success:false` (exit 1) ≠ retry** — the scrap EXISTS and auto-fix is retrying in the background: poll `trawl data <id>` / `trawl run-info <historyId>`, never re-run `create`.
+- **On success, human mode proves the value (since 2.3.0)** — after a successful first run, `create` prints a small best-effort data sample (item count, field names, one truncated value) below the scrap summary, then `Next step: trawl data <id>` (with `trawl get <id>` noted as the secondary, metadata-only view). The sample is bonus output only: any fetch/parse failure is swallowed silently and never turns a successful create into an error. `--json` is unaffected — it always returns the raw `{ success, scrap, historyId }` payload with no sample appended.
 - Distinct from `trawl scraps create` below (raw Puppeteer script, no AI).
 
 ### List scraps
@@ -268,7 +270,8 @@ trawl scraps run <id> --watch
 
 ## Other commands
 
-- `trawl scraps banner <id> -f <path>` — upload a banner image (png/jpg/jpeg/webp) for a scrap; see the `trawl-scrap-banner` skill for the full generate + upload pipeline. **Since CLI 1.18.4**, any other extension is a usage error, exit `2` (e.g. `Unsupported image type ".gif" — use png, jpg, or webp.`) — before 1.18.4 an unrecognized extension silently uploaded under a fabricated `image/png` Content-Type instead of being refused.
+- `trawl scraps banner <id> -f <path>` — upload a banner image (png/jpg/jpeg/webp) for a scrap; see the `trawl-scrap-banner` skill for the full generate + upload pipeline. **Since CLI 1.18.4**, any other extension is a usage error, exit `2` (e.g. `Unsupported image type ".gif" — use png, jpg, or webp.`) — before 1.18.4 an unrecognized extension silently uploaded under a fabricated `image/png` Content-Type instead of being refused. `--json` (**since CLI 1.21.0**) returns the full updated scrap object.
+- `trawl upgrade [--check] [--json]` — self-update the CLI itself (**since @trawlme/cli 3.0.0**; replaced the old top-level `trawl update`, which is now `trawl scraps update <id>` for a scrap). Compares the installed version to npm's `latest` and, with no flags, shells out to `npm install -g @trawlme/cli@latest`. `--check` only reports whether an update is available (never installs) and exits `1` when one is — a script-friendly gate. `--json` emits `{ package, current, latest, upToDate, upgraded }` on every path (up-to-date, `--check`, or a real install) instead of the human-readable lines. An install failure (missing `npm`, `EACCES` on the global prefix) prints the manual fallback command and exits `1`; `--json` gets `{"error":{"message":"upgrade failed: …","kind":"upgrade_failed"}}` instead.
 - `trawl logout` — clear stored credentials
 - `trawl skills list/install/uninstall/update` — manage the bundled Claude Code skills (this package)
 - `trawl telemetry` — inspect/toggle usage telemetry (`TRAWL_TELEMETRY=0` / `DO_NOT_TRACK=1` env overrides also work)

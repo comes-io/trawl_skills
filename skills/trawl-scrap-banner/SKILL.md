@@ -105,7 +105,11 @@ trawl scraps banner ${scrapId} -f /tmp/${siteName}-banner.png
 
 CLI confirms upload. Banner is immediately visible on trawl.me.
 
-**Failure detection:** `banner` has **no `--json` mode** — the exit code is the only machine-readable signal. `0` = uploaded; non-zero = failed: `1` other/unmapped error, `2` malformed `scrapId` (not a 24-char hex ObjectId — usage error), `3` not logged in / expired-or-invalid token (401), `4` wrong `scrapId` (404), `5` network. Check `$?`, don't parse stdout for success/failure.
+**Failure detection:** the exit code is the quick signal — `0` = uploaded; non-zero = failed: `1` other/unmapped error, `2` malformed `scrapId` (not a 24-char hex ObjectId — usage error) or an unsupported `-f` file extension, `3` not logged in / expired-or-invalid token (401), `4` wrong `scrapId` (404), `5` network. Since @trawlme/cli 1.21.0, `banner` also accepts `--json`: on success it prints the full updated scrap object (same shape as `trawl scraps get <id> --json`), not just an upload receipt. Prefer `$?` for a quick pass/fail check; add `--json` when the caller needs the scrap object itself.
+
+```bash
+trawl scraps banner ${scrapId} -f /tmp/${siteName}-banner.png --json
+```
 
 ## Conventions
 

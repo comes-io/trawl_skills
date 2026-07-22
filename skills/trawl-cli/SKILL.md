@@ -53,12 +53,15 @@ Since CLI **v2.0.0** the agent-facing verbs are also top-level: `trawl list / ge
 ### Create a scrap from a URL + a prompt (AI wizard — the flagship)
 
 ```bash
-trawl create https://example.com/products --prompt "track product prices" [--no-autofix] [--json]
+trawl create https://example.com/products --prompt "track product prices"
 ```
+
+Optional flags: `--no-autofix` (skip the auto-fix retry on a failed first run), `--json` (raw API payload on stdout).
 
 One call: the server generates the extraction code (AI), creates a **persistent, self-healing scrap**, and triggers its first run (auto-fix on failure by default). Requires an api-key scoped `trawl:scraps:create` (or a session JWT). Response: `{ success, scrap, historyId }`.
 
 Critical semantics for agents:
+- **Ask the user before running it** — `trawl create` sends the URL + prompt to Trawl, creates a persistent scrap, enables a DAILY schedule, and consumes quota (LLM generation + a real run). Obtain explicit user confirmation immediately before executing; never fire it speculatively.
 - **NOT idempotent + not instant** — generation + first run legitimately takes 30-250s (the CLI already uses the 300s long-run timeout; a global `TRAWL_TIMEOUT` override clamps it). On a client-side timeout the scrap **may still have been created server-side**: run `trawl list` before retrying — a retry creates a DUPLICATE scrap and burns quota.
 - **Daily schedule by default** — a wizard scrap is created with a daily cron (07:00 UTC); it re-runs and meters every day until you change it (`trawl scraps update <id> --cron <expr>` or `--no-cron`).
 - **`success:false` (exit 1) ≠ retry** — the scrap EXISTS and auto-fix is retrying in the background: poll `trawl data <id>` / `trawl run-info <historyId>`, never re-run `create`.

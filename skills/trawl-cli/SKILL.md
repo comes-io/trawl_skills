@@ -199,7 +199,7 @@ trawl scraps rm <id>                       # `rm` is an alias for `delete`, same
 
 ## Scrap accounts
 
-For per-scrap authentication, see the `trawl-scrap-account` skill. CLI commands: `trawl scraps account set/status/clear-session/delete`, plus `trawl scraps account session set <id>` (upload BYO-cookies).
+For per-scrap authentication, see the `trawl-scrap-account` skill. CLI commands: `trawl scraps account set/status/clear-session/delete`, plus `trawl scraps account session capture <id>` (one-command login capture — the primary path) and `trawl scraps account session set <id> -c <file>` (manual upload — the fallback).
 
 ## MCP bridge
 
@@ -255,6 +255,12 @@ Note: the CLI surfaces the abstract proxy Tier (0–4) + diagnostics + autofix, 
 **No-runs shape, unified across commands:** `doctor --json`, `autofix --json`, `data --errors --json` (**since CLI 1.18.3**), and `snapshot --json` (**since CLI 1.18.4**) all return `{"status":"no_runs"}` (exit `0`) for a scrap that has **never run** — `doctor` had this shape since CLI 1.18.0; `autofix`/`data --errors` joined it in 1.18.3 (both used to return a bare `null`, indistinguishable from any other absent-payload state); `snapshot` joined it in 1.18.4 (it had no `--json` mode at all before then — a never-run scrap without `-o` just printed "No runs yet." to stdout and exited `0`, no machine-readable signal). Don't confuse it with `autofix --json`'s bare `null`, which means a run *did* happen but had no auto-fix attempt on it — genuinely "no data", a different state from "never ran at all". A run still **in progress** shows a `running` badge on `doctor`/`data --errors` (human mode) — never `failed` (**since CLI 1.18.3**).
 
 **`snapshot -o <file>` on a never-run scrap (since CLI 1.18.4):** without `--json`, this now exits `4` (`not_found`) instead of silently exiting `0` with nothing written — before 1.18.4 a script checking only the exit code couldn't tell "no file was produced" from success. `--json` takes priority when both flags are passed together.
+
+**`failureKind: 'auth'` — the target site wants a login, not you.** `doctor`/`run-info`/`history` can show this on a run: the worker landed on a known login route and the run came back empty — the SITE is asking for a session, not blocking the request outright. This ranks above the generic "walled, no reliable bypass" vendor verdict and skips auto-fix (a selector rewrite can never clear a login wall). Treat it as a distinct case, not another blocked/wall run:
+- **Send the user to the `trawl-scrap-account` skill**, not to a "no reliable bypass" explanation. The fix is that skill's `session capture` command, not a selector rewrite or a proxy-tier bump.
+- A run can carry BOTH `failureKind: 'auth'` and a matched vendor wall (e.g. `block.kind` naming Akamai/Cloudflare) — the two are independent server signals and can legitimately disagree. Don't collapse them into one story; say both readings are possible when `doctor` hedges instead of asserting one.
+
+**Don't confuse this with the CLI's own `kind: 'auth'`** (Errors to recognize / Exit codes below). The `--json` error envelope's `kind` field means **your Trawl session** is the problem — an expired or missing JWT, exit `3` — and the fix is `trawl login`. `failureKind: 'auth'` on a *run* means the **scraped site** wants credentials — the fix is `trawl scraps account session capture <id>` (see `trawl-scrap-account`). Same string, two unrelated axes (this CLI's own auth vs. the target site's auth) on two different objects (a thrown CLI error vs. a persisted run) — sending someone to `trawl login` for a `failureKind:'auth'` run fixes nothing.
 
 **"Create a job that runs every morning"**
 ```bash

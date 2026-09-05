@@ -19,7 +19,7 @@ Injecting cookies does not change the worker's fingerprint policy.
 
 2. **One-shot test or short-lived experiment, or you want to verify your cookies work before setting up persistence** → use **Flavour A — Embedded BYO-cookies**. Hard-code the cookie array directly in the script body. Accepts the trade-off that cookies are in plain text in the script source.
 
-3. **MFA, SSO, OAuth, or you don't want to hand credentials to Trawl** → use **Flavour B — Persisted BYO-cookies**. Export cookies from a logged-in browser session, push them into `TRAWL.account.session.cookies` via UI, CLI, or API, and the script reads them back before navigation. Cookies are encrypted at rest.
+3. **MFA, SSO, OAuth, or you don't want to hand credentials to Trawl** → use **Flavour B — Persisted BYO-cookies**. Run `trawl scraps account session capture <scrap-id>` locally: it opens a real Chrome, you log in exactly as you normally would (2FA included), and the CLI reads the resulting session over CDP and uploads it — no manual export. Manual upload (`session set -c <file>`) still exists as a fallback. Cookies (and localStorage) are encrypted at rest.
 
 ## Trawl-managed credentials (server-stored, still supported)
 
@@ -80,17 +80,41 @@ await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded'
 
 ## Flavour B — Persisted BYO-cookies
 
-Export cookies from a logged-in browser session. Three write paths exist for `TRAWL.account.session.cookies` (any one is fine; the scrap source reads them back identically):
+### The command: `session capture` (primary path)
 
-- **UI** (one-off / interactive): scrap settings drawer → Account section → **Upload session cookies** → paste a Puppeteer cookie JSON array → Save.
-- **CLI** (scripted / batch): `trawl scraps account session set <scrap-id> --cookies <file>` (npm `@trawlme/cli` ≥ 1.14.0).
-- **API** (custom tooling): `PUT /api/scraps/:scrapId/account/session` with body `{ cookies: [...] }`.
+```bash
+trawl scraps account session capture <scrap-id>
+```
 
-The worker encrypts them at rest; the script reads the same global as the managed flow:
+Opens a real, headed Chrome at the scrap's target URL. The user logs in there exactly as they normally would — password, MFA, SSO, whatever the site needs. Capture completes when they press Enter back in the terminal, or when they close the Chrome window (closing early captures cookies only — localStorage needs the Enter path). The CLI then reads the session over CDP (cookies **and** per-origin localStorage) and uploads it via the same endpoint Flavour B always used (`PUT /api/scraps/:scrapId/account/session`). `--json` prints counts only (`cookiesCaptured`, `originsCaptured`, target domain) — the session itself is never printed, in any mode.
+
+> You stay authenticated as yourself throughout — Trawl never sees your credentials, only the resulting session. Responsibility for lawful use of that session stays with you; this isn't legal advice.
+
+Flags:
+- `--chrome <path>` — a specific Chrome/Chromium executable. Auto-detected otherwise; `TRAWL_CHROME_PATH` (or `PUPPETEER_EXECUTABLE_PATH`/`CHROME_PATH`) names one explicitly, checked before the well-known per-OS install paths.
+- `--json` — machine-readable summary, never the secret.
+
+The scrap needs a target URL configured first (`trawl scraps update <id> -u <url>` if it doesn't have one — there's nothing to open a browser to otherwise). If login didn't actually complete on that domain before Enter/close, nothing uploads — the CLI says plainly that 0 cookies were in scope, rather than silently saving an unauthenticated session.
+
+**🔴 Your role here is detect, orient, explain — never extract.** Tell the user this command exists and what it does; do not open a browser yourself and copy cookies out of it. Claude's own browser tooling (`document.cookie`, `page.evaluate`) can only see non-HttpOnly cookies — by design, that excludes exactly the session cookie that matters on Instagram, X, and Reddit, all of which mark it HttpOnly. Only CDP sees an HttpOnly cookie, and only the CLI drives CDP here. A skill that tells you to read cookies yourself produces a silent, confident-looking failure on the one cookie the site actually checks.
+
+### Prerequisites — this needs a human, on their own machine, right now
+
+`session capture` requires a **local, interactive terminal with a display**, because a human has to actually see the Chrome window and log in. It does **not** work headless, in CI, over a plain SSH session (no display on Linux), or from an agent driving a remote/cloud browser. If that's the actual environment, say so plainly and point at the fallback below — don't imply a session is always recoverable from wherever you happen to be running.
+
+### Fallback — manual upload (`session set`)
+
+```bash
+trawl scraps account session set <scrap-id> -c <file>
+```
+
+Accepts either a bare Puppeteer cookie JSON array, or a `{ cookies, origins }` storageState-shaped file — the same shape `session capture` uploads, so a file saved from one capture can be replayed with `set` later, or handed to someone else. Reach for this only when capture genuinely can't run in the current environment. UI (scrap settings → Account → Upload session cookies) and API (`PUT /api/scraps/:scrapId/account/session`) reach the same endpoint.
+
+The worker encrypts the stored session at rest; the script reads it back the same way as the managed flow:
 
 ```js
 if (!TRAWL.account?.session?.cookies) {
-  throw new Error('Flavour B requires TRAWL.account.session.cookies — push them via UI / CLI / API first.');
+  throw new Error('Flavour B requires TRAWL.account.session.cookies — push them via `session capture` (or `session set`) first.');
 }
 
 const page = await browser.newPage();
@@ -98,7 +122,24 @@ await page.setCookie(...TRAWL.account.session.cookies);
 await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
 ```
 
-See `references/cookie-injection.md` for domain matching, HttpOnly export, localStorage, and expiry handling.
+See `references/cookie-injection.md` for the session/cookie shape the server accepts, domain matching, and localStorage replay (including the manual fallback walkthrough for when capture can't run).
+
+### Necessary, not sufficient — cookies alone don't clear every wall
+
+A valid, freshly-captured session is the right first move, but not a guaranteed fix:
+
+- **Reddit**: a run with valid, unexpired cookies still came back empty — the app hydrates its authenticated view client-side and the worker's snapshot landed without that hydration completing. X and Instagram are the same class of SPA; expect the same failure mode.
+- **Amazon** (`/product-reviews/…`): a 403 there is an **IP-level** block, not a login wall — no cookie touches it.
+- **Tier-1 social in general**: without a **geo-matched residential proxy**, session injection is close to dead — a valid cookie replayed from a datacenter ASN is itself a signal these sites flag, independent of whether the cookie is genuinely good.
+
+Say this plainly when recommending capture: it's the right lever to pull, not a promised fix.
+
+### Secret hygiene — a session is a bearer secret
+
+- `session capture` scopes what it uploads to the scrap's target domain — cookies and localStorage entries outside that domain are dropped, not uploaded. Never widen this: don't tell a user to export their *whole* cookie jar when only one site's session is needed.
+- The temporary Chrome profile `capture` launches into is deleted after the run, success or failure.
+- If a manual `cookies.json` (or storageState file) is ever created for the fallback path, delete it after `session set` uploads it — it's a live bearer credential sitting on disk otherwise.
+- `--json` never prints the session, and neither should you — only counts and the target domain are safe to relay back to the user.
 
 ## Anti-patterns to avoid
 
@@ -107,9 +148,11 @@ Authentication does not change the worker boundary rules (see `trawl-scrap-desig
 - No stealth plugins even when cookies are set.
 - No `waitForTimeout` — use state-based waits.
 - No deep CSS chains for post-login selectors.
+- Never read cookies via your own browser tooling and hand them to the user (or paste them into a scrap) — `document.cookie` silently drops HttpOnly cookies, the ones that matter. Detect the wall, name `session capture`, stop there.
 
 ## What this skill does NOT cover
 
 - Scraping logic → `trawl-scrap-design`
 - CLI account management → `trawl-cli` (`trawl scraps account set/status/clear-session/delete`)
 - Local debugging runs → `trawl-scrap-local-test`
+- The CLI's own auth errors (your Trawl login expired) → `trawl-cli` skill, `trawl login` — that `kind:'auth'` is unrelated to a scrap run's `failureKind:'auth'` covered here (which means the *target site* wants a session, not that your Trawl login is stale)

@@ -51,7 +51,25 @@ Two failure modes:
 
 **Navigation failed** — `page.waitForNavigation` throws (network error or timeout). The `try/catch` catches this only; it does NOT detect wrong credentials.
 
-**Wrong credentials** — site redirects back to `/login` (navigational success, so `try/catch` never fires). Detect by checking `page.url()` after navigation resolves.
+**Wrong credentials** — site redirects back to a login route (navigational success, so `try/catch` never fires). Detect by checking `page.url()` after navigation resolves — but match the **exact pathname**, never a substring like `.includes('/login')`. A substring match false-positives on any URL that merely contains the word — `github.com/{org}/login`, `reddit.com/r/login`, a docs page at `/docs/login` — and would misclassify a page that loaded fine as a rejected login. Match against the same login-route vocabulary Trawl's own server-side login-wall detector uses, exact-whole-pathname (trailing-slash-insensitive):
+
+```js
+const LOGIN_ROUTES = new Set([
+  '/login', '/signin', '/accounts/login', '/ap/signin',
+  '/i/flow/login', '/users/sign_in', '/auth/login',
+]);
+
+function isLoginRoute(url) {
+  let pathname;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    return false;
+  }
+  const normalized = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+  return LOGIN_ROUTES.has(normalized);
+}
+```
 
 ```js
 const page = await browser.newPage();
@@ -69,8 +87,8 @@ try {
   throw new Error(`Login navigation failed: ${err.message}`);
 }
 
-if (page.url().includes('/login')) {
-  // Form rejected our credentials and we're still on the login page.
+if (isLoginRoute(page.url())) {
+  // Exact route match, not a substring — form rejected our credentials and we're still on a login page.
   throw new Error('Login failed: wrong credentials');
 }
 

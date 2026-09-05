@@ -95,7 +95,7 @@ Flavour A re-injects cookies from the script source on every run.
 
 ### Exporting cookies from Chrome — manual fallback walkthrough
 
-**Prefer `trawl scraps account session capture <id>` (see `SKILL.md`)** — it does this over CDP in one step, and it also gets HttpOnly cookies + localStorage, which a DevTools JSON copy can't reach for the JS side. Use the walkthrough below only when capture genuinely can't run in the environment (no local interactive terminal/display). These are steps for the user to run themselves in their own Chrome — never something to execute via your own browser tooling.
+**Prefer `trawl scraps account session capture <id>` (see `SKILL.md`)** — it does this over CDP in one step: cookies, HttpOnly included, plus localStorage, no manual copying. Use the walkthrough below only when capture genuinely can't run in the environment (no local interactive terminal/display). These are steps for the user to run themselves in their own Chrome — never something to execute via your own browser tooling.
 
 1. Log in to the target site in Chrome.
 2. Open DevTools → Application → Storage → Cookies → select the domain.

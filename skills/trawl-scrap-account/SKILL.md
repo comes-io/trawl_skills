@@ -28,19 +28,20 @@ The worker injects the account credentials under `TRAWL.account`:
 - `TRAWL.account.username` — the username stored for this scrap account (alias: `account.username`).
 - `TRAWL.account.password` — the password stored for this scrap account (alias: `account.password`).
 
-After a successful login, call `saveSession(await page.cookies())` immediately. The worker persists the cookie array encrypted at rest and exposes it as `TRAWL.account.session.cookies` on the next run.
+The worker replays a stored session automatically, before your script's first navigation — your script never restores cookies itself. Its job is to **detect whether the page is already logged in**, and only run the credential login flow when it isn't. After a successful login, call `saveSession(await page.cookies())` — the worker persists the cookie array encrypted at rest and replays it on the next run.
 
 > Legacy bare `account.*` (e.g. `account.username`) still works as an alias.
 
 ```js
 const page = await browser.newPage();
 
-if (TRAWL.account?.session?.cookies) {
-  // Saved session exists — restore cookies and skip the login flow.
-  await page.setCookie(...TRAWL.account.session.cookies);
-  await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
-} else {
-  // First run (or cleared session) — perform full login.
+// The worker has already replayed any stored session onto this page.
+// Check for a marker that only appears when logged in, rather than
+// assuming a saved session means you're logged in.
+await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
+const loggedIn = await page.$('.account-menu') !== null;
+
+if (!loggedIn) {
   await page.goto('https://example.com/login', { waitUntil: 'domcontentloaded' });
   await page.type('#username', TRAWL.account.username);
   await page.type('#password', TRAWL.account.password);
@@ -110,16 +111,18 @@ trawl scraps account session set <scrap-id> -c <file>
 
 Accepts either a bare Puppeteer cookie JSON array, or a `{ cookies, origins }` storageState-shaped file — the same shape `session capture` uploads, so a file saved from one capture can be replayed with `set` later, or handed to someone else. Reach for this only when capture genuinely can't run in the current environment. UI (scrap settings → Account → Upload session cookies) and API (`PUT /api/scraps/:scrapId/account/session`) reach the same endpoint.
 
-The worker encrypts the stored session at rest; the script reads it back the same way as the managed flow:
+The worker encrypts the stored session at rest and replays it automatically before your script's first navigation — Flavour B has no credentials to fall back on, so the script's only job is to confirm the replayed session is actually logged in, and throw (pointing back at capture) if it isn't:
 
 ```js
-if (!TRAWL.account?.session?.cookies) {
-  throw new Error('Flavour B requires TRAWL.account.session.cookies — push them via `session capture` (or `session set`) first.');
-}
-
 const page = await browser.newPage();
-await page.setCookie(...TRAWL.account.session.cookies);
+
+// The worker has already replayed the stored session onto this page.
 await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
+const loggedIn = await page.$('.account-menu') !== null;
+
+if (!loggedIn) {
+  throw new Error('Session missing or expired — re-run `session capture` (or `session set`) to refresh it.');
+}
 ```
 
 See `references/cookie-injection.md` for the session/cookie shape the server accepts, domain matching, and localStorage replay (including the manual fallback walkthrough for when capture can't run).

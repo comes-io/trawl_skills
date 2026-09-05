@@ -10,19 +10,20 @@ Async helper injected by the worker. Call after confirming login succeeded — n
 await saveSession(await page.cookies());
 ```
 
-The worker persists the cookie array encrypted. On the next run, `TRAWL.account.session.cookies` is populated and the login flow is skipped. Call once per run only.
+The worker persists the cookie array encrypted and replays it automatically on the next run, before your script's first navigation. Call once per run only.
 
 ### Reuse pattern (full code)
 
 ```js
 const page = await browser.newPage();
 
-if (TRAWL.account?.session?.cookies) {
-  // Saved session exists — restore cookies and skip the login flow.
-  await page.setCookie(...TRAWL.account.session.cookies);
-  await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
-} else {
-  // First run (or cleared session) — perform full login.
+// The worker has already replayed any stored session onto this page.
+// Check for a marker that only appears when logged in, rather than
+// assuming a saved session means you're logged in.
+await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
+const loggedIn = await page.$('.account-menu') !== null;
+
+if (!loggedIn) {
   await page.goto('https://example.com/login', { waitUntil: 'domcontentloaded' });
   await page.type('#username', TRAWL.account.username);
   await page.type('#password', TRAWL.account.password);
@@ -35,7 +36,7 @@ if (TRAWL.account?.session?.cookies) {
 }
 ```
 
-`TRAWL.account.session` is `undefined` on the first run — hence the optional chain. Both branches must reach the same post-login URL before scraping starts.
+`TRAWL.account.session` is always an object once an account is configured — `cookies` and `origins` default to `[]` rather than the field itself being absent or `undefined`, so `if (TRAWL.account?.session?.cookies)` is *always* truthy (an empty array is truthy in JS) and can't tell you whether a session was actually captured. The marker check above is what actually distinguishes the two cases. Both branches must reach the same post-login URL before scraping starts.
 
 ### Forced re-login
 
@@ -43,7 +44,7 @@ if (TRAWL.account?.session?.cookies) {
 trawl scraps account clear-session <scrap-id>
 ```
 
-The next run finds `TRAWL.account.session` undefined, falls into the login branch, and re-runs `saveSession` on success.
+The next run replays `cookies: []` / `origins: []` (nothing to restore), the marker check fails, the script falls into the login branch, and `saveSession` re-runs on success.
 
 ### When the login flow itself breaks
 

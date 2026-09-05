@@ -10,7 +10,7 @@ Async helper injected by the worker. Call after confirming login succeeded — n
 await saveSession(await page.cookies());
 ```
 
-The worker persists the cookie array encrypted and replays it automatically on the next run, before your script's first navigation. Call once per run only.
+The worker persists the cookie array encrypted and replays it automatically on the next run, before your script's first navigation. This is a **cookies-only** refresh — it never touches or clears any `origins` (localStorage) block already on the account, whether that came from `session capture` or the web UI. Call once per run only.
 
 ### Reuse pattern (full code)
 

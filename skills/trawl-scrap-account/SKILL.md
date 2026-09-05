@@ -28,7 +28,7 @@ The worker injects the account credentials under `TRAWL.account`:
 - `TRAWL.account.username` — the username stored for this scrap account (alias: `account.username`).
 - `TRAWL.account.password` — the password stored for this scrap account (alias: `account.password`).
 
-The worker replays a stored session automatically, before your script's first navigation — your script never restores cookies itself. Its job is to **detect whether the page is already logged in**, and only run the credential login flow when it isn't. After a successful login, call `saveSession(await page.cookies())` — the worker persists the cookie array encrypted at rest and replays it on the next run.
+The worker replays a stored session automatically, before your script's first navigation — your script never restores cookies itself (don't call `page.setCookie(...TRAWL.account.session.cookies)`; the worker already applied them via `browserContext.setCookie()`, and per-page `setCookie` is deprecated Puppeteer surface besides). Its job is to **detect whether the page is already logged in**, and only run the credential login flow when it isn't. After a successful login, call `saveSession(await page.cookies())` — the worker persists the cookie array encrypted at rest and replays it on the next run. This is a **cookies-only** refresh: it never touches or clears an `origins` (localStorage) block already saved via `session capture` or the web UI.
 
 > Legacy bare `account.*` (e.g. `account.username`) still works as an alias.
 

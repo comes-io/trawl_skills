@@ -20,7 +20,7 @@ await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded'
 
 **The same restriction applies to Claude's own browser tooling** — it evaluates JS in page context, the same `document.cookie` ceiling. Instagram, X, and Reddit all mark their session cookie HttpOnly, so an agent trying to read the cookie itself via its own browser tool produces a confident-looking but silently wrong result on exactly the cookie that matters. **Never do this — detect the wall, then tell the user to run `session capture` (see `SKILL.md`), which reads the full jar over CDP instead of JS.**
 
-A human, using the browser's own DevTools UI (not JS) or a privileged extension, can still see and copy an HttpOnly cookie's value manually — that's the fallback below, unaffected by the JS restriction above. It's just slower and more error-prone than one CLI command, and it's a step for the user to take in their own browser, never you.
+A human, using the browser's own DevTools UI (not JS), can still see and copy an HttpOnly cookie's value manually — that's the fallback below, unaffected by the JS restriction above. It's just slower and more error-prone than one CLI command, and it's a step for the user to take in their own browser, never you.
 
 Manual capture, when still needed:
 - **DevTools** → Application → Cookies → select the domain → copy to JSON manually.

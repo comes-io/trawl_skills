@@ -212,7 +212,7 @@ TOKEN=$(trawl token)
 
 # MCP endpoint — accepts the session JWT as a Bearer token. This is a real,
 # runnable JSON-RPC 2.0 call (tools/list) against the Streamable HTTP
-# transport — verified against trawl_node's mcp.controller.js:
+# transport — verified end-to-end against a live server:
 curl --fail-with-body -X POST https://api.trawl.me/api/mcp \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
@@ -258,7 +258,7 @@ Note: the CLI surfaces the abstract proxy Tier (0–4) + diagnostics + autofix, 
 
 **`failureKind: 'auth'` — the target site wants a login, not you.** `doctor`/`run-info`/`history` can show this on a run: the worker landed on a known login route and the run came back empty — the SITE is asking for a session, not blocking the request outright. Node ranks a worker-flagged block ABOVE this (precedence is block > auth > selector > nav > empty): `auth` only fires on an empty run that is NOT also block-flagged. Once it does fire, it skips auto-fix (a selector rewrite can never clear a login wall). Treat it as a distinct case from a blocked/wall run, not a subtype of one:
 - **Send the user to the `trawl-scrap-account` skill**, not to a "no reliable bypass" explanation. The fix is that skill's `session capture` command, not a selector rewrite or a proxy-tier bump.
-- A run can carry BOTH `failureKind: 'auth'` and a matched vendor wall — but only for a vendor node's own block classifier (`BLOCK_TYPE_PATTERN` in `trawl_node`'s `failureKind.js`) doesn't yet recognize, e.g. `block.kind` naming Kasada: the CLI's own `WALL_VENDOR_PATTERNS` table (`doctor.ts`) matches it, but that pattern doesn't, so `auth` still fires on the same run instead of `block` pre-empting it. For every vendor the pattern DOES match (Akamai, Cloudflare, DataDome, PerimeterX), `block` always wins first and the two never coexist. Don't collapse the Kasada case into one story; say both readings are possible when `doctor` hedges instead of asserting one.
+- A run can carry BOTH `failureKind: 'auth'` and a matched vendor wall when the vendor is one the server's block classifier doesn't yet recognize by name — e.g. `block.kind` naming Kasada. The server's block classifier and the CLI's own vendor list (`WALL_VENDOR_PATTERNS` in `doctor.ts`) are maintained separately: the CLI's list matches Kasada and reports a wall, but the server's classifier doesn't recognize it, so the block flag never gets set and `auth` still fires on the same run instead of `block` pre-empting it. For every vendor the server's classifier DOES match (Akamai, Cloudflare, DataDome, PerimeterX), `block` always wins first and the two never coexist. Don't collapse the Kasada case into one story — state both readings rather than choosing, the same way `doctor` hedges instead of asserting one.
 
 **Don't confuse this with the CLI's own `kind: 'auth'`** (Errors to recognize / Exit codes below). The `--json` error envelope's `kind` field means **your Trawl session** is the problem — an expired or missing JWT, exit `3` — and the fix is `trawl login`. `failureKind: 'auth'` on a *run* means the **scraped site** wants credentials — the fix is `trawl scraps account session capture <id>` (see `trawl-scrap-account`). Same string, two unrelated axes (this CLI's own auth vs. the target site's auth) on two different objects (a thrown CLI error vs. a persisted run) — sending someone to `trawl login` for a `failureKind:'auth'` run fixes nothing.
 

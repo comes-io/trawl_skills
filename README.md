@@ -70,7 +70,7 @@ Example prompts:
 
 ### Authenticated scraps: session capture
 
-For a site that needs a login, `trawl-scrap-account` walks Claude through `trawl scraps account session capture <id>` — it opens a real, visible Chrome window at the scrap's target URL, you log in there exactly as you normally would (2FA included), and the CLI reads the resulting session over the Chrome DevTools Protocol (cookies and per-origin localStorage) and uploads it. No manual cookie export.
+With `@trawlme/cli` 3.12 or later, `trawl-scrap-account` walks Claude through `trawl scraps account session capture <id>` for a site that needs a login — it opens a real, visible Chrome window at the scrap's target URL, you log in there exactly as you normally would (2FA included), and the CLI reads the resulting session over the Chrome DevTools Protocol (cookies and per-origin localStorage) and uploads it. No manual cookie export.
 
 > You stay authenticated as yourself throughout — Trawl never sees your credentials, only the resulting session. Responsibility for lawful use of that session stays with you; this isn't legal advice.
 

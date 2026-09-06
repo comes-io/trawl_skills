@@ -35,7 +35,7 @@ export function buildContext(flags, readFile = (p) => readFileSync(resolve(p), '
     account.session = { cookies: JSON.parse(readFile(cookiesPath)) };
   }
 
-  // Parity with the worker (trawl_node#786): also expose creds under TRAWL.account.*.
+  // Parity with the production worker: also expose creds under TRAWL.account.*.
   // null when nothing was provided, mirroring buildTrawlAccount's null-when-empty contract.
   const hasAccount = !!(account.username || account.password || account.session);
   TRAWL.account = hasAccount ? account : null;

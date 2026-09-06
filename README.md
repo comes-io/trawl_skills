@@ -48,7 +48,9 @@ npm install -g @trawlme/cli
 trawl skills install
 ```
 
-The CLI bundles the skills and keeps them in sync with the CLI version.
+The CLI bundles the skills and keeps them in sync with the CLI version — every `trawl` command re-syncs a skill whose installed version drifts from the CLI's.
+
+Since `@trawlme/cli` 3.10, `trawl login` also installs any bundled skill you don't already have when run interactively — no separate `trawl skills install` needed. It prints exactly what it installed, plus the one thing you have to do yourself: **restart Claude Code**, since skills are only picked up at session start.
 
 ## Migrating from v0.1.x
 
@@ -65,6 +67,14 @@ Example prompts:
 - "create a scrap that scrapes example.com daily at 9am" (`trawl-cli` + `trawl-scrap-design`)
 - "scrape a site behind login without giving Trawl my credentials" (`trawl-scrap-account`)
 - "test my scrap locally before pushing" (`trawl-scrap-local-test`)
+
+### Authenticated scraps: session capture
+
+For a site that needs a login, `trawl-scrap-account` walks Claude through `trawl scraps account session capture <id>` — it opens a real, visible Chrome window at the scrap's target URL, you log in there exactly as you normally would (2FA included), and the CLI reads the resulting session over the Chrome DevTools Protocol (cookies and per-origin localStorage) and uploads it. No manual cookie export.
+
+> You stay authenticated as yourself throughout — Trawl never sees your credentials, only the resulting session. Responsibility for lawful use of that session stays with you; this isn't legal advice.
+
+This needs a local interactive terminal with a real display — it doesn't work headless, in CI, or over a plain SSH session. `session set -c <file>` (manual cookie upload) remains the fallback when capture can't run.
 
 ## Commands
 

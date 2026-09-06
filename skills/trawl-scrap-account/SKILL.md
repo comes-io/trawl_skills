@@ -38,8 +38,10 @@ const page = await browser.newPage();
 // The worker has already replayed any stored session onto this page.
 // Check for a marker that only appears when logged in, rather than
 // assuming a saved session means you're logged in.
+// `domcontentloaded` fires before an SPA hydrates, so an immediate DOM query
+// can read "not logged in" on a perfectly valid session — wait for the marker instead.
 await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
-const loggedIn = await page.$('.account-menu') !== null;
+const loggedIn = await page.waitForSelector('.account-menu', { timeout: 10_000 }).then(() => true, () => false);
 
 if (!loggedIn) {
   await page.goto('https://example.com/login', { waitUntil: 'domcontentloaded' });
@@ -97,7 +99,7 @@ Flags:
 
 The scrap needs a target URL configured first (`trawl scraps update <id> -u <url>` if it doesn't have one — there's nothing to open a browser to otherwise). If login didn't actually complete on that domain before Enter/close, nothing uploads — the CLI says plainly that 0 cookies were in scope, rather than silently saving an unauthenticated session.
 
-**🔴 Your role here is detect, orient, explain — never extract.** Tell the user this command exists and what it does; do not open a browser yourself and copy cookies out of it. Claude's own browser tooling (`document.cookie`, `page.evaluate`) can only see non-HttpOnly cookies — by design, that excludes exactly the session cookie that matters on Instagram, X, and Reddit, all of which mark it HttpOnly. Only CDP sees an HttpOnly cookie, and only the CLI drives CDP here. A skill that tells you to read cookies yourself produces a silent, confident-looking failure on the one cookie the site actually checks.
+**🔴 Your role here is detect, orient, explain — never extract.** Tell the user this command exists and what it does; do not open a browser yourself and copy cookies out of it. Browser JavaScript cannot see an HttpOnly cookie — which is why Claude's own browser tooling (`document.cookie`, `page.evaluate`) can't capture it, and Instagram, X, and Reddit all mark their session cookie HttpOnly. The CLI uses CDP for automated capture; the DevTools export documented in `references/cookie-injection.md` remains the manual fallback. A skill that tells you to read cookies yourself produces a silent, confident-looking failure on the one cookie the site actually checks.
 
 ### Prerequisites — this needs a human, on their own machine, right now
 
@@ -117,8 +119,10 @@ The worker encrypts the stored session at rest and replays it automatically befo
 const page = await browser.newPage();
 
 // The worker has already replayed the stored session onto this page.
+// `domcontentloaded` fires before an SPA hydrates, so an immediate DOM query
+// can read "not logged in" on a perfectly valid session — wait for the marker instead.
 await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
-const loggedIn = await page.$('.account-menu') !== null;
+const loggedIn = await page.waitForSelector('.account-menu', { timeout: 10_000 }).then(() => true, () => false);
 
 if (!loggedIn) {
   throw new Error('Session missing or expired — re-run `session capture` (or `session set`) to refresh it.');

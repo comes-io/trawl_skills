@@ -24,7 +24,6 @@ A human, using the browser's own DevTools UI (not JS) or a privileged extension,
 
 Manual capture, when still needed:
 - **DevTools** → Application → Cookies → select the domain → copy to JSON manually.
-- **A WebExtensions-based Chrome extension** from https://chromewebstore.google.com/search/cookie%20exporter
 
 ### Domain matching gotchas
 
@@ -100,8 +99,6 @@ Flavour A re-injects cookies from the script source on every run.
 1. Log in to the target site in Chrome.
 2. Open DevTools → Application → Storage → Cookies → select the domain.
 3. Copy values to a JSON array matching `CookieParam` shape (`name`, `value`, `domain`, `path`, `httpOnly`, `secure`) — see "Session shape the server accepts" above for the full field list the server validates.
-
-Or a cookie-export extension: https://chromewebstore.google.com/search/cookie%20exporter
 
 ### Storage state expiry
 

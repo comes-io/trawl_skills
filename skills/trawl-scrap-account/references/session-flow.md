@@ -20,8 +20,10 @@ const page = await browser.newPage();
 // The worker has already replayed any stored session onto this page.
 // Check for a marker that only appears when logged in, rather than
 // assuming a saved session means you're logged in.
+// `domcontentloaded` fires before an SPA hydrates, so wait for the marker
+// with a bounded timeout instead of querying for it immediately.
 await page.goto('https://example.com/dashboard', { waitUntil: 'domcontentloaded' });
-const loggedIn = await page.$('.account-menu') !== null;
+const loggedIn = await page.waitForSelector('.account-menu', { timeout: 10_000 }).then(() => true, () => false);
 
 if (!loggedIn) {
   await page.goto('https://example.com/login', { waitUntil: 'domcontentloaded' });

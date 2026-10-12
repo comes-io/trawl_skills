@@ -48,7 +48,7 @@ CI-relevant env vars. The first three are per-invocation session overrides — t
 
 All commands accept `--json` (where listed) for machine-readable or pipeable output.
 
-Since CLI **v2.0.0** the agent-facing verbs are also top-level: `trawl list / get / run / data / history / run-info / trigger / whoami / ping / create` (the `trawl scraps <verb>` paths below still work as aliases — zero breaking change, except `trawl fetch`, removed in 2.0.0, see the AI-wizard `create` below which replaced it).
+Since CLI **v2.0.0** the agent-facing verbs are also top-level: `trawl list / get / run / data / runs / run-info / trigger / whoami / ping / create` (`runs` is named `history` before CLI 3.14.0; `history` still works as an alias) (the `trawl scraps <verb>` paths below still work as aliases — zero breaking change, except `trawl fetch`, removed in 2.0.0, see the AI-wizard `create` below which replaced it).
 
 ### Create a scrap from a URL + a prompt (AI wizard — the flagship)
 
@@ -59,14 +59,14 @@ trawl create --url https://example.com/products --prompt "track product prices" 
 
 Optional flags: `--no-autofix` (skip the auto-fix retry on a failed first run), `--json` (raw API payload on stdout), `--url <url>` (**since 2.1.0**) — an alias of the positional `url` argument, for callers that prefer a named flag. Exactly one URL is required: pass the positional OR `--url`, never neither. Passing both is fine only when they're identical; two *different* URLs is a usage error (exit 2) rather than the CLI silently picking one.
 
-One call: the server generates the extraction code (AI), creates a **persistent, self-healing scrap**, and triggers its first run (auto-fix on failure by default). Requires an api-key scoped `trawl:scraps:create` (or a session JWT). Response: `{ success, scrap, historyId }`.
+One call: the server generates the extraction code (AI), creates a **persistent, self-healing scrap**, and triggers its first run (auto-fix on failure by default). Requires an api-key scoped `trawl:scraps:create` (or a session JWT). Response: `{ success, scrap, historyId }` — newer servers also send `runId`, the same value (prefer `runId`, fall back to `historyId`).
 
 Critical semantics for agents:
 - **Ask the user before running it** — `trawl create` sends the URL + prompt to Trawl, creates a persistent scrap, enables a DAILY schedule, and consumes quota (LLM generation + a real run). Obtain explicit user confirmation immediately before executing; never fire it speculatively.
 - **NOT idempotent + not instant** — generation + first run legitimately takes 30-250s (the CLI already uses the 300s long-run timeout; a global `TRAWL_TIMEOUT` override clamps it). On a client-side timeout the scrap **may still have been created server-side**: run `trawl list` before retrying — a retry creates a DUPLICATE scrap and burns quota.
 - **Daily schedule by default** — a wizard scrap is created with a daily cron (07:00 UTC); it re-runs and meters every day until you change it (`trawl scraps update <id> --cron <expr>` or `--no-cron`).
-- **`success:false` (exit 1) ≠ retry** — the scrap EXISTS and auto-fix is retrying in the background: poll `trawl data <id>` / `trawl run-info <historyId>`, never re-run `create`.
-- **On success, human mode proves the value (since 2.3.0)** — after a successful first run, `create` prints a small best-effort data sample (item count, field names, one truncated value) below the scrap summary, then `Next step: trawl data <id>` (with `trawl get <id>` noted as the secondary, metadata-only view). The sample is bonus output only: any fetch/parse failure is swallowed silently and never turns a successful create into an error. `--json` is unaffected — it always returns the raw `{ success, scrap, historyId }` payload with no sample appended.
+- **`success:false` (exit 1) ≠ retry** — the scrap EXISTS and auto-fix is retrying in the background: poll `trawl data <id>` / `trawl run-info <runId>`, never re-run `create`.
+- **On success, human mode proves the value (since 2.3.0)** — after a successful first run, `create` prints a small best-effort data sample (item count, field names, one truncated value) below the scrap summary, then `Next step: trawl data <id>` (with `trawl get <id>` noted as the secondary, metadata-only view). The sample is bonus output only: any fetch/parse failure is swallowed silently and never turns a successful create into an error. `--json` is unaffected — it always returns the raw `{ success, scrap, historyId }` payload (plus `runId` on newer servers) with no sample appended.
 - Distinct from `trawl scraps create` below (raw Puppeteer script, no AI).
 
 ### List scraps
@@ -180,14 +180,14 @@ Control flow depends on the path: for a **synchronous** run (`run`, or `trigger 
 ### Inspect past runs
 
 ```bash
-trawl scraps history <id>                   # table of recent runs (status, time, tier, failureKind)
-trawl scraps history <id> --json            # JSON array, newest first
-trawl scraps history <id> --limit 50        # cap rows (default 20)
-trawl scraps run-info <hid>                 # one run's detail by its history id (status, tier, failureKind, error + selector)
-trawl scraps run-info <hid> --json
+trawl scraps runs <id>                      # table of recent runs (status, time, tier, failureKind)
+trawl scraps runs <id> --json               # JSON array, newest first
+trawl scraps runs <id> --limit 50           # cap rows (default 20)
+trawl scraps run-info <runId>               # one run's detail by its run id (status, tier, failureKind, error + selector)
+trawl scraps run-info <runId> --json
 ```
 
-`doctor`/`autofix` (below) inspect the **last** run; `history` + `run-info` reach **any** run: list with `history`, then pass a run's `hid` to `run-info` for the full diagnosis. `run-info` hits `/api/historys/:hid`, which returns the proxy tier + `failureKind` to the scrap owner, plus the error snapshot (`errorMessage`/selector context) that `history`'s embedded list never carries. (On servers released before mid-July 2026, `history` also shows the tier/failureKind columns blank — `run-info` always has them.)
+`runs` is named `history` before CLI 3.14.0, and `history` still works as an alias on every version — a run id and a history id are the same value. `doctor`/`autofix` (below) inspect the **last** run; `runs` + `run-info` reach **any** run: list with `runs`, then pass a run's id to `run-info` for the full diagnosis. `run-info` hits `/api/historys/:hid`, which returns the proxy tier + `failureKind` to the scrap owner, plus the error snapshot (`errorMessage`/selector context) that `runs`' embedded list never carries. (On servers released before mid-July 2026, `runs` also shows the tier/failureKind columns blank — `run-info` always has them.)
 
 ### Delete
 

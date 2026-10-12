@@ -187,7 +187,7 @@ trawl scraps run-info <runId>               # one run's detail by its run id (st
 trawl scraps run-info <runId> --json
 ```
 
-`runs` is named `history` before CLI 3.14.0, and `history` still works as an alias on every version — a run id and a history id are the same value. `doctor`/`autofix` (below) inspect the **last** run; `runs` + `run-info` reach **any** run: list with `runs`, then pass a run's id to `run-info` for the full diagnosis. `run-info` hits `/api/historys/:hid`, which returns the proxy tier + `failureKind` to the scrap owner, plus the error snapshot (`errorMessage`/selector context) that `runs`' embedded list never carries. (On servers released before mid-July 2026, `runs` also shows the tier/failureKind columns blank — `run-info` always has them.)
+`runs` needs CLI ≥ 3.14.0 (on older installs, use `history`); `history` still works as an alias on every version. A run id and a history id are the same value — in the table and in `--json` rows the field is still named `hid`. `doctor`/`autofix` (below) inspect the **last** run; `runs` + `run-info` reach **any** run: list with `runs`, then pass a row's `hid` to `run-info` for the full diagnosis. `run-info` hits `/api/historys/:hid`, which returns the proxy tier + `failureKind` to the scrap owner, plus the error snapshot (`errorMessage`/selector context) that `runs`' embedded list never carries. (On servers released before mid-July 2026, `runs` also shows the tier/failureKind columns blank — `run-info` always has them.)
 
 ### Delete
 
@@ -315,7 +315,7 @@ Scrap object shape:
 }
 ```
 
-There is **no `lastRun` field** — that never existed. Last-run status/timing/error all derive from `history[0]` (newest first). The embedded row shape differs by command:
+There is **no `lastRun` field** — that never existed. Last-run status/timing/error all derive from `history[0]` (newest first). Newer servers also send the same array as `runs` — read `runs ?? history`. The embedded row shape differs by command:
 - `trawl scraps get <id>` — up to 100 rows, each with `status`, `statusDetail`, `time`, `proxyTier`, `failureKind`, `blockType`, `createdAt`
 - `trawl scraps list` — only the single newest row per scrap, with just `status` / `statusDetail` / `createdAt` (no `time`/`proxyTier`/`failureKind`/`blockType` — those come back `undefined`, not `null`); fetch `get <id>` if you need the triage fields
 - `status` — tri-state: `true` (success) / `false` (failure) / `null` (in-flight, no result yet)

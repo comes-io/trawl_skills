@@ -85,8 +85,8 @@ returnData([
 - **Stored params are scenarios.** The array holds alternative param sets, and each scheduled, dashboard or `trawl run` run receives **one set picked at random**. The script never sees the whole array, so every set must carry every key the script needs, and every set must use the same keys as set 0. A `--param` run replaces the pick with the caller's values for that run only.
 - **Value generators** (written as a param VALUE and resolved server-side on every run before the script starts; the script only reads `TRAWL.<name>`). They are unrelated to the random pick of the stored set above.
   - `RANDOM(a,b,c)` returns one of the comma-separated values, e.g. `{"TRAWL.city":"RANDOM(paris,lyon)"}`. Values are not trimmed, so `RANDOM(a, b)` can yield `" b"`: write no spaces.
-  - `DATE(N,unit,format)` returns now + N `unit` (a moment unit, e.g. `days`) in the given moment format, e.g. `DATE(7,days,YYYY-MM-DD)`. N must be a non-negative integer. A `-` in N is read as a range `a-b`, not as a negative offset, so `DATE(-7,...)` does not give a past date: DATE cannot produce past dates.
-  - Parsing limits: the whole param value must be exactly the call, with no text before or after it (any prefix disables the generator; the last character is dropped as the `)`). Neither the values nor the DATE format may contain a comma, so a format like `MMM D, YYYY` is cut off.
+  - `DATE(N,unit,format)` returns now + N `unit` (a moment unit, e.g. `days`) in the given moment format, e.g. `DATE(7,days,YYYY-MM-DD)`. N must be a non-negative integer. A `-` in N switches to a random-offset form, not a negative offset, so `DATE(-7,...)` gives today to +6 days: DATE cannot produce past dates.
+  - Parsing limits: the whole param value must be exactly the call, with no text before or after it (any prefix disables the generator; the last character is dropped as the `)`). The call is cut at the first `(`, so a value containing a second `(` is truncated. Neither the values nor the DATE format may contain a comma, so a format like `MMM D, YYYY` is cut off.
 
 Validate inputs early — throw before any network call if a required param is missing.
 

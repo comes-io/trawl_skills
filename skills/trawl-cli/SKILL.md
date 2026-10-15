@@ -157,7 +157,7 @@ trawl scraps update <id> --tier tier2 --json                # full scrap JSON, o
 - Params stored on a scrap (`-p` / `--params-file`) are **scenarios**: an array of param sets. Each scheduled, dashboard or `trawl run` run picks **one set at random** — never "the last saved set". Put everything a run needs in each set; sets are alternatives, not additions.
 - To run with your own values instead, use `trawl trigger <id> --param key=value` (repeatable). It is a one-off run: the stored scenarios are left untouched. **Since CLI 3.15.0** — currently on the npm `next` dist-tag (`npm i -g @trawlme/cli@next`), not yet on `latest` (3.12.7).
 - Rules: the first stored set defines the schema. Keys are that set's keys, `TRAWL.` prefix optional. Values are typed like the stored value: number, `true`/`false`, or string. Every key is required; blank values and unknown, duplicate or wrongly typed keys are refused with exit 2 (a number error says `must be a number`, a boolean one `must be true or false`; unknown or missing keys list the expected keys). Works with `--wait`, `--watch` and the async default.
-- A scrap without stored params takes no `--param`. A scrap that has params and is triggered without `--param` fails (422 under `--wait`; async, it is acked as queued and the run then fails).
+- A scrap without stored params takes no `--param`. A scrap that has params and is triggered without `--param` fails (422 under `--wait`; async, it is acked as queued and exits 0, then the run is dropped with no history row, and `--watch` waits until its 300s timeout; use `--wait` to see the error).
 - `--param` reads the scrap first, so an API key needs `trawl:scraps:read` besides `trawl:scraps:run`. On a scrap without a cron, `trigger` prints a stderr warning that nothing runs it unattended.
 
 ### Proxy tiers
@@ -171,7 +171,7 @@ trawl scraps update <id> --tier tier2 --json                # full scrap JSON, o
 
 ### Run / trigger / watch
 
-- `trawl scraps run <id>` — synchronous run via the load endpoint, blocks until done. Arms a 300s timeout (since CLI 1.18.4 — see `TRAWL_TIMEOUT` above) instead of the generic 30s default, because this endpoint legitimately runs 30-250s server-side.
+- `trawl scraps run <id>` — synchronous run via the load endpoint, blocks until done. Takes no params (see "Params are scenarios"). Arms a 300s timeout (since CLI 1.18.4 — see `TRAWL_TIMEOUT` above) instead of the generic 30s default, because this endpoint legitimately runs 30-250s server-side.
 - `trawl scraps run <id> --watch` — same, then polls for progress (since CLI 1.18.4 — see below; it does **not** stream)
 - `trawl scraps trigger <id>` — **async by default**: queues the worker run and returns immediately (no waiting on the 30-250s run)
 - `trawl scraps trigger <id> --wait` — synchronous: block until the run completes (legacy behaviour). Same 300s timeout as `run`, since CLI 1.18.4.

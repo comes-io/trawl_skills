@@ -81,9 +81,10 @@ returnData([
 ## Params
 
 - **`TRAWL.url`** — the target URL, set by the scrap schedule. Treat as immutable; never override it.
-- **`TRAWL.<custom>`** — any custom parameter defined in Settings → Parameters (UI), or provisioned via the CLI: `trawl scraps update <id> -p/--params '[{"TRAWL.<name>":"<value>"}]'` (JSON array) or `--params-file <path>` for bulk — see the `trawl-cli` skill.
-- **`RANDOM(...)`** — a helper that returns a random value from a list (see Trawl params docs). *Signature not independently re-verified against the worker runtime as part of this pass — treat as provisional.*
-- **`DATE(±N, unit, format)`** — a date helper that returns a formatted date offset from now. *Signature not independently re-verified against the worker runtime as part of this pass — treat as provisional.*
+- **`TRAWL.<custom>`** — a custom parameter of the run. Where it comes from: the scrap's stored params (Settings → Parameters, or `trawl scraps update <id> -p/--params '[{"TRAWL.<name>":"<value>"}]'`, or `--params-file <path>` for bulk — see the `trawl-cli` skill) or the caller's own values (`trawl trigger <id> --param name=value`, CLI 3.15.0+, npm `next` tag for now).
+- **Stored params are scenarios.** The array holds alternative param sets, and each scheduled, dashboard or `trawl run` run receives **one set picked at random**. The script never sees the whole array, so every set must carry every key the script needs. A `--param` run replaces the pick with the caller's values for that run only.
+- **`RANDOM(...)`** — a value generator, unrelated to the scenario pick above: a helper that returns a random value from a list (see Trawl params docs). *Signature not independently re-verified against the worker runtime as part of this pass — treat as provisional.*
+- **`DATE(±N, unit, format)`** — a value generator too: a date helper that returns a formatted date offset from now. *Signature not independently re-verified against the worker runtime as part of this pass — treat as provisional.*
 
 Validate inputs early — throw before any network call if a required param is missing.
 

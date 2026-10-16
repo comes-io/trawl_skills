@@ -11,6 +11,7 @@ name: Release
 # on the npm `next` dist-tag — `latest` (bare `npm i @trawlme/skills`) does
 # NOT move. Promotion next→latest = /trawl-internal:release after dev QA:
 #   npm dist-tag add @trawlme/skills@X.Y.Z latest
+# Promotion now runs through .github/workflows/promote.yml (workflow_dispatch, version=X.Y.Z).
 on:
   push:
     branches: [main]

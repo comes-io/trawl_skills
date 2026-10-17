@@ -155,7 +155,7 @@ trawl scraps update <id> --tier tier2 --json                # full scrap JSON, o
 ### Params are scenarios
 
 - Params stored on a scrap (`-p` / `--params-file`) are **scenarios**: an array of param sets. Each scheduled, dashboard or `trawl run` run picks **one set at random** — never "the last saved set". Put everything a run needs in each set; sets are alternatives, not additions.
-- To run with your own values instead, use `trawl trigger <id> --param key=value` (repeatable). It is a one-off run: the stored scenarios are left untouched. **Since CLI 3.15.0** — currently on the npm `next` dist-tag (`npm i -g @trawlme/cli@next`), not yet on `latest` (3.12.7).
+- To run with your own values instead, use `trawl trigger <id> --param key=value` (repeatable). It is a one-off run: the stored scenarios are left untouched. **Since CLI 3.15.0.**
 - Rules: the first stored set defines the schema. Keys are that set's keys, `TRAWL.` prefix optional. Values are typed like the stored value: number, `true`/`false`, or string. Every key is required; blank values and unknown, duplicate or wrongly typed keys are refused with exit 2 (a number error says `must be a number`, a boolean one `must be true or false`; unknown or missing keys list the expected keys). Works with `--wait`, `--watch` and the async default.
 - A scrap without stored params takes no `--param`. A scrap that has params and is triggered without `--param` fails (422 under `--wait`; async, it is acked as queued and exits 0, then the run is dropped with no history row, and `--watch` polls until its 660s timeout, then prints "Timed out waiting for the run to finish" and exits 1; use `--wait` to see the error).
 - `--param` reads the scrap first, so an API key needs `trawl:scraps:read` besides `trawl:scraps:run`. On a scrap without a cron, `trigger` prints a stderr warning that nothing runs it unattended.
@@ -175,7 +175,7 @@ trawl scraps update <id> --tier tier2 --json                # full scrap JSON, o
 - `trawl scraps run <id> --watch` — same, then polls for progress (since CLI 1.18.4 — see below; it does **not** stream)
 - `trawl scraps trigger <id>` — **async by default**: queues the worker run and returns immediately (no waiting on the 30-250s run)
 - `trawl scraps trigger <id> --wait` — synchronous: block until the run completes (legacy behaviour). Same timeout as `run` (660s since CLI 3.12.6).
-- `trawl scraps trigger <id> --param key=value` — one-off run with your own param values, see "Params are scenarios" (CLI 3.15.0+, `next` tag)
+- `trawl scraps trigger <id> --param key=value` — one-off run with your own param values, see "Params are scenarios" (CLI 3.15.0+)
 - `trawl scraps trigger <id> --watch` — queue, then poll for progress (since CLI 1.18.4 — see below; it does **not** stream)
 - `trawl scraps watch <id>` — the standalone command: attach to an in-progress run's activity stream over SSE. **Unchanged** by any of the above — this is the one that actually streams.
 

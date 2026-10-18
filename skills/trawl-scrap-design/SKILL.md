@@ -121,6 +121,30 @@ try {
 - Page never loaded or returned a fatal error
 - Required param missing
 
+## Run budget
+
+One run has a **time budget**: about **10 minutes** from dispatch, and the clock starts before your script does (the run may queue first). Past it the worker stops the run and nothing is returned. Time is almost always the limit, not size: the whole output may reach tens of MB before a run fails with `output too large`.
+
+- Add a **deadline guard**: note `Date.now()` at the start, stop about **7 minutes** in, and `returnData` the rows read so far, each with `truncated: true` (the platform reads it as a marker on the row, not as a data column).
+- Read fewer, cheaper pages: each `page.goto` costs seconds on its own. For lists, prefer same-origin `fetch` from inside the page (`page.evaluate`) on JSON feeds, pagination or search APIs, sitemaps — one request at a time, at least 1 s apart.
+- A catalog that cannot fit one run is still scrapable:
+  - **targeted** — only the items you need, by search or by their URLs (passed as a param), not the whole catalog;
+  - **split** — one scrap per category or section, each small enough for one run.
+
+```js
+const started = Date.now();
+const STOP_AFTER_MS = 7 * 60 * 1000;
+const rows = [];
+for (const url of productUrls) {
+  if (Date.now() - started > STOP_AFTER_MS) {
+    rows.forEach((r) => { r.truncated = true; });
+    break;
+  }
+  // … read one product, push it to rows
+}
+returnData(rows);
+```
+
 ## Hard anti-bot sites
 
 The platform auto-escalates proxy tiers when a run comes back empty — you usually don't manage tiers at all. For a site you *know* is heavily protected, there are two CLI knobs (see the `trawl-cli` skill for full flag docs):

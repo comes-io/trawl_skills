@@ -125,11 +125,11 @@ try {
 
 One run has a **time budget**: about **10 minutes** from dispatch, and the clock starts before your script does (the run may queue first). Past it the worker stops the run and nothing is returned. Time is almost always the limit, not size: the whole output may reach tens of MB before a run fails with `output too large`.
 
-- Add a **deadline guard**: note `Date.now()` at the start, stop about **7 minutes** in, and `returnData` the rows read so far, each with `truncated: true` (the platform reads it as a marker on the row, not as a data column).
+- Add a **deadline guard**: note `Date.now()` at the start, stop about **7 minutes** in, and `returnData` the rows read so far, with `truncated: true` on the last one (the platform reads it as a marker that the run stopped early, not as a data column).
 - Read fewer, cheaper pages: each `page.goto` costs seconds on its own. For lists, prefer same-origin `fetch` from inside the page (`page.evaluate`) on JSON feeds, pagination or search APIs, sitemaps. One request at a time, never parallel tabs or `page.goto`s to the same site (several loads within a few seconds end the run). Space requests about 1 s apart: that pause is rate-limit politeness (`references/anti-patterns.md`), never a wait for the page.
 - A catalog that cannot fit one run is still scrapable:
   - **targeted** — only the items you need, by search or by their URLs (passed as a param), not the whole catalog;
-  - **split** — one scrap per category or section, each small enough for one run.
+  - **split** — one scrap per category or section, each small enough for one run; each scrap keeps its own rows. Slices of ONE scrap across runs (a different param per run) replace each other's rows, unless the scrap's `items` option keeps them (`keepData`, set by the Trawl team on request).
 
 ```js
 const started = Date.now();
@@ -137,7 +137,7 @@ const STOP_AFTER_MS = 7 * 60 * 1000;
 const rows = [];
 for (const url of productUrls) { // your list, e.g. from a param or a sitemap
   if (Date.now() - started > STOP_AFTER_MS) {
-    rows.forEach((r) => { r.truncated = true; });
+    if (rows.length) rows[rows.length - 1].truncated = true; // marks where the run stopped
     break;
   }
   // … fetch one product (awaited), push it to rows

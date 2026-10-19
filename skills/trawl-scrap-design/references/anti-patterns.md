@@ -30,7 +30,7 @@ Source: [browser-use.com/posts/bot-detection](https://browser-use.com/posts/bot-
 
 ## No fixed setTimeout / waitForTimeout
 
-`page.waitForTimeout(N)` is deprecated. `setTimeout` is unreliable under load and slows every run unconditionally. Use state-based waits:
+`page.waitForTimeout(N)` is deprecated. `setTimeout` is unreliable under load and slows every run unconditionally. The one exception is the ~1 s pause between two requests to the same site (rate-limit politeness, see Run budget in the skill), never a wait for the page. Use state-based waits:
 - `page.waitForSelector(selector)` — most targeted
 - `page.waitForNetworkIdle()` — for SPA-heavy pages
 - `page.waitForFunction(fn)` — for complex DOM conditions

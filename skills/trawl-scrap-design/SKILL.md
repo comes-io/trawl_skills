@@ -38,6 +38,7 @@ const price = await page.$eval(PRICE_SEL, (el) => el.textContent.trim());
 - module-CSS (stable prefix + hash suffix) → match the prefix: `[class*="ListingCard_price"]`
 - `aria-label` often encodes the value (`[aria-label*="Current price"]`) — more stable than any class
 - **JSON beats DOM**: `window.__NEXT_DATA__` (Next.js SSR) and JSON-LD (`script[type="application/ld+json"]`, schema.org) carry the data pre-render — use as primary, DOM as fallback.
+- **An XHR is not the data**: before you build on a JSON call the page makes, check its response holds the rows the user asked for — many JSON calls are analytics, ads or tracking.
 
 ## Waits
 

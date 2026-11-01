@@ -124,7 +124,7 @@ try {
 
 ## Run budget
 
-One run has a **time budget**: about **10 minutes** from dispatch, and the clock starts before your script does (the run may queue first). Past it the worker stops the run and nothing is returned. Time is almost always the limit, not size: the whole output may reach tens of MB before a run fails with `output too large`.
+One run has a **time budget**: about **10 minutes**. For a scheduled run, a web-app run or `trawl scraps run`, the clock starts before your script does (the run may queue first); for `trawl scraps trigger` (the worker route), it starts when your script starts. Past it the worker stops the run and nothing is returned. Time is almost always the limit, not size: the whole output may reach tens of MB before a run fails with `output too large`.
 
 - Add a **deadline guard**: note `Date.now()` at the start, stop about **7 minutes** in, and `returnData` the rows read so far, with `truncated: true` on the last one (the platform reads it as a marker that the run stopped early, not as a data column). The guard runs between requests, so also give each request its own timeout (e.g. `fetch(url, { signal: AbortSignal.timeout(20000) })` inside `page.evaluate`, with a `try`/`catch` that breaks the loop): one stuck page must not carry the run past its budget.
 - Read fewer, cheaper pages: each `page.goto` costs seconds on its own. For lists, prefer same-origin `fetch` from inside the page (`page.evaluate`) on JSON feeds, pagination or search APIs, sitemaps. One request at a time, never parallel tabs or `page.goto`s to the same site (several loads within a few seconds can get the run blocked). Space requests about 1 s apart: that pause is rate-limit politeness (`references/anti-patterns.md`), never a wait for the page.

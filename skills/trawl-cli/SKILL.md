@@ -39,7 +39,7 @@ If the user gets `Session expired or invalid. Run: trawl login`, their stored JW
 CI-relevant env vars. The first three are per-invocation session overrides — they take precedence over stored config without writing to disk (for normal commands; note `trawl login` itself still persists a token even when `TRAWL_TOKEN` is set):
 - `TRAWL_TOKEN` — session JWT, takes precedence over `trawl login`'s stored token
 - `TRAWL_API_URL` — API base URL, takes precedence over `trawl login --url`
-- `TRAWL_TIMEOUT` — per-request fetch timeout in ms (default 30000; 1260000 for `scraps run`, `data --fresh`, `trigger --wait` (300000 from CLI 1.18.4, 660000 since 3.12.6, 1260000 since trawl_cli#250), and 4800000 for `create` (a longer wizard budget since 2.0.0) — these hit the server-side scrap-execute/AI-wizard paths, which legitimately run for minutes; this env var still overrides that longer default too, higher or lower — beware: a low global value clamps `create` and triggers the duplicate-on-retry trap described below)
+- `TRAWL_TIMEOUT` — per-request fetch timeout in ms (default 30000; 1260000 for `scraps run`, `data --fresh`, `trigger --wait` (300000 from CLI 1.18.4, 660000 since 3.12.6, 1260000 since 4.0.4), and 4800000 for `create` (a longer wizard budget since 2.0.0; 3600000 before 4.0.4) — these hit the server-side scrap-execute/AI-wizard paths, which legitimately run for minutes; this env var still overrides that longer default too, higher or lower — beware: a low global value clamps `create` and triggers the duplicate-on-retry trap described below)
 - `DEBUG` — any truthy value prints the full error stack trace to stderr, same effect as the global `--debug` flag
 
 `TRAWL_CONFIG_DIR` is different — it **redirects where the CLI reads and writes** its config file (so `trawl login` persists there). Point it at an ephemeral dir for hermetic runs, e.g. `TRAWL_CONFIG_DIR=$(mktemp -d)`.
@@ -63,7 +63,7 @@ One call: the server generates the extraction code (AI), creates a **persistent,
 
 Critical semantics for agents:
 - **Ask the user before running it** — `trawl create` sends the URL + prompt to Trawl, creates a persistent scrap, enables a DAILY schedule, and consumes quota (LLM generation + a real run). Obtain explicit user confirmation immediately before executing; never fire it speculatively.
-- **NOT idempotent + not instant** — generation + probes + first run legitimately take many minutes (the CLI arms a 4800s ceiling for `create`, far above the 30s default; a global `TRAWL_TIMEOUT` override clamps it). On a client-side timeout the scrap **may still have been created server-side**: run `trawl list` before retrying — a retry creates a DUPLICATE scrap and burns quota.
+- **NOT idempotent + not instant** — generation + probes + first run legitimately take many minutes (since CLI 4.0.4 it arms a 4800s ceiling for `create`, far above the 30s default; a global `TRAWL_TIMEOUT` override clamps it). On a client-side timeout the scrap **may still have been created server-side**: run `trawl list` before retrying — a retry creates a DUPLICATE scrap and burns quota.
 - **Daily schedule by default** — a wizard scrap is created with a daily cron (07:00 UTC); it re-runs and meters every day until you change it (`trawl scraps update <id> --cron <expr>` or `--no-cron`).
 - **`success:false` (exit 1) ≠ retry** — the scrap EXISTS and auto-fix is retrying in the background: poll `trawl data <id>` / `trawl run-info <runId>`, never re-run `create`.
 - **On success, human mode proves the value (since 2.3.0)** — after a successful first run, `create` prints a small best-effort data sample (item count, field names, one truncated value) below the scrap summary, then `Next step: trawl data <id>` (with `trawl get <id>` noted as the secondary, metadata-only view). The sample is bonus output only: any fetch/parse failure is swallowed silently and never turns a successful create into an error. `--json` is unaffected — it always returns the raw `{ success, scrap, historyId }` payload (plus `runId` on newer servers) with no sample appended.
@@ -171,10 +171,10 @@ trawl scraps update <id> --tier tier2 --json                # full scrap JSON, o
 
 ### Run / trigger / watch
 
-- `trawl scraps run <id>` — synchronous run via the load endpoint, blocks until done. Takes no params (see "Params are scenarios"). Arms a 1260s timeout (300s from CLI 1.18.4, 660s since 3.12.6, 1260s since trawl_cli#250 — see `TRAWL_TIMEOUT` above) instead of the generic 30s default, because this endpoint can legitimately run for minutes server-side.
+- `trawl scraps run <id>` — synchronous run via the load endpoint, blocks until done. Takes no params (see "Params are scenarios"). Arms a 1260s timeout (300s from CLI 1.18.4, 660s since 3.12.6, 1260s since 4.0.4 — see `TRAWL_TIMEOUT` above) instead of the generic 30s default, because this endpoint can legitimately run for minutes server-side.
 - `trawl scraps run <id> --watch` — same, then polls for progress (since CLI 1.18.4 — see below; it does **not** stream)
 - `trawl scraps trigger <id>` — **async by default**: queues the worker run and returns immediately (no waiting on the run, which can take up to about 20 minutes)
-- `trawl scraps trigger <id> --wait` — synchronous: block until the run completes (legacy behaviour). Same timeout as `run` (1260s since trawl_cli#250: the server may wait up to 600s for a worker before the run's own 600s budget starts).
+- `trawl scraps trigger <id> --wait` — synchronous: block until the run completes (legacy behaviour). Same timeout as `run` (1260s since CLI 4.0.4: the server may wait up to 600s for a worker before the run's own 600s budget starts).
 - `trawl scraps trigger <id> --param key=value` — one-off run with your own param values, see "Params are scenarios" (CLI 3.15.0+)
 - `trawl scraps trigger <id> --watch` — queue, then poll for progress (since CLI 1.18.4 — see below; it does **not** stream)
 - `trawl scraps watch <id>` — the standalone command: attach to an in-progress run's activity stream over SSE. **Unchanged** by any of the above — this is the one that actually streams.

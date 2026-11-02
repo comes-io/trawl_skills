@@ -173,7 +173,7 @@ trawl scraps update <id> --tier tier2 --json                # full scrap JSON, o
 
 - `trawl scraps run <id>` — synchronous run via the load endpoint, blocks until done. Takes no params (see "Params are scenarios"). Arms a 1380s timeout (300s from CLI 1.18.4, 660s since 3.12.6, 1380s since 4.0.4 — see `TRAWL_TIMEOUT` above) instead of the generic 30s default, because this endpoint can legitimately run for minutes server-side.
 - `trawl scraps run <id> --watch` — same, then polls for progress (since CLI 1.18.4 — see below; it does **not** stream)
-- `trawl scraps trigger <id>` — **async by default**: queues the worker run and returns immediately (no waiting on the run, which can take up to about 20 minutes)
+- `trawl scraps trigger <id>` — **async by default**: queues the worker run and returns immediately (no waiting on the run, which can take up to about 23 minutes with its digest)
 - `trawl scraps trigger <id> --wait` — synchronous: block until the run completes (legacy behaviour). Same timeout as `run` (1380s since CLI 4.0.4: the server may wait up to 600s for a worker before the run's own 600s budget starts, then up to 180s for the digest).
 - `trawl scraps trigger <id> --param key=value` — one-off run with your own param values, see "Params are scenarios" (CLI 3.15.0+)
 - `trawl scraps trigger <id> --watch` — queue, then poll for progress (since CLI 1.18.4 — see below; it does **not** stream)

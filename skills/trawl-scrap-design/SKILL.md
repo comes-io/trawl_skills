@@ -127,7 +127,7 @@ try {
 One run has a **time budget**: about **10 minutes**. Count it from before your script starts: a scheduled or web-app run may queue for a worker first, inside that budget, and the guard below leaves about 3 minutes for it. A run you wait on through the API (`trawl scraps trigger --wait`, the n8n node) starts its 10 minutes when your script starts instead; keep the guard anyway, the same script also runs on a schedule. Past it the worker stops the run and nothing is returned. Time is almost always the limit, not size: the whole output may reach tens of MB before a run fails with `output too large`.
 
 - Add a **deadline guard**: note `Date.now()` at the start, stop about **7 minutes** in, and `returnData` the rows read so far, with `truncated: true` on the last one (the platform reads it as a marker that the run stopped early, not as a data column). The guard runs between requests, so also give each request its own timeout (e.g. `fetch(url, { signal: AbortSignal.timeout(20000) })` inside `page.evaluate`, with a `try`/`catch` that breaks the loop): one stuck page must not carry the run past its budget.
-- Read fewer, cheaper pages: each `page.goto` costs seconds on its own. For lists, prefer same-origin `fetch` from inside the page (`page.evaluate`) on JSON feeds, pagination or search APIs, sitemaps. One request at a time, never parallel tabs or `page.goto`s to the same site (several loads within a few seconds can get the run blocked). Space requests about 1 s apart: that pause is rate-limit politeness (`references/anti-patterns.md`), never a wait for the page.
+- Read fewer, cheaper pages: each `page.goto` costs seconds on its own. For lists, prefer same-origin `fetch` from inside the page (`page.evaluate`) on JSON feeds, pagination or search APIs, sitemaps. One request at a time, never parallel tabs or `page.goto`s to the same site (several loads within a few seconds can get the run blocked). Between two requests to the same host, wait a random pause of 1.5 s or more (`1500 + Math.random() * 1000` ms), never a fixed one: that pause is rate-limit politeness (`references/anti-patterns.md`), never an anti-bot mechanism, never a wait for the page.
 - A catalog that cannot fit one run is still scrapable:
   - **targeted** — only the items you need, by search or by their URLs (passed as a param), not the whole catalog;
   - **split** — one scrap per category or section, each small enough for one run; each scrap keeps its own rows. Slices of ONE scrap across runs (a different param per run) replace each other's rows, unless the scrap's `items` option keeps them (`keepData`, set by the Trawl team on request).
@@ -142,7 +142,7 @@ for (const url of productUrls) { // your list, e.g. from a param or a sitemap
     break;
   }
   // … fetch one product (awaited), push it to rows
-  await new Promise((r) => setTimeout(r, 1000)); // politeness between requests
+  await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000)); // politeness between requests
 }
 returnData(rows);
 ```

@@ -22,7 +22,7 @@ Source: [browser-use.com/posts/bot-detection](https://browser-use.com/posts/bot-
 
 ## No random jitter as primary defence
 
-Bot detection decides at the fingerprint level — milliseconds before any timing signal exists. `Math.random() * 500` delays have no effect. Small jitter (200–800ms), or a random pause of 1.5 s or more between two requests to the same host (`1500 + Math.random() * 1000` ms, never a fixed one), is acceptable for **rate-limit politeness** only, never as an anti-bot mechanism.
+Bot detection decides at the fingerprint level — milliseconds before any timing signal exists. `Math.random() * 500` delays have no effect. A random pause of 1.5 s or more between two requests to the same host (`1500 + Math.random() * 1000` ms, never a fixed one, never shorter) is for **rate-limit politeness** only, never an anti-bot mechanism.
 
 Source: [browser-use.com/posts/bot-detection](https://browser-use.com/posts/bot-detection)
 

@@ -1,6 +1,6 @@
 # Script Helpers — Trawl Scrap Scripts
 
-> *Besides `page`, `browser`, `TRAWL` and `returnData`, a script on the worker can call three helpers: `fetch`, `cursor` and `captcha`. This page lists what each one takes and returns. They exist on the worker only: the local harness (`trawl-scrap-local-test`) does not inject `cursor` or `captcha`, so a script that uses them fails locally with a `ReferenceError`.*
+> *Besides `page`, `browser`, `TRAWL` and `returnData`, a script on the worker can call four helpers: `fetch`, `cursor`, `captcha` and `trawl.waitForHydration`. This page lists what each one takes and returns. They exist on the worker only: the local harness (`trawl-scrap-local-test`) does not inject `cursor`, `captcha` or `trawl`, so a script that uses them fails locally with a `ReferenceError`.*
 
 The script runs in a sandbox, not in Node. Only these globals exist at script level: `page`, `browser`, `cursor`, `captcha`, `TRAWL`, `account`, `trawl`, `saveSession`, `returnData`, `fetch`, `console`, the timers (`setTimeout`, `setInterval`, `clearTimeout`, `clearInterval`), `JSON`, `Math`, `Date`, `Array`, `Object`, `String`, `Number`, `Boolean`, `RegExp`, `Map`, `Set`, `Promise`, `Error`, `URL`, `URLSearchParams`, `Buffer`. Anything else (`AbortSignal`, `AbortController`, `Headers`, `FormData`, `TextDecoder`, `require`, `process`) is undefined at script level; it is still there inside `page.evaluate`, which runs in the browser.
 
@@ -64,6 +64,25 @@ const links = await page.$$eval(ITEM_SEL, (els) => els.map((a) => a.href));
 ```
 
 ---
+
+## `trawl.waitForHydration` — wait until the page has finished loading its data
+
+Waits on the last page the script navigated. Use it after `page.goto` on a site that renders its content with JavaScript, before you read the DOM.
+
+| Option | Default | Meaning |
+|---|---|---|
+| `strategy` | `'networkIdle'` | `'networkIdle'`: no network request for 500 ms. `'selector'`: wait for `selector` to appear. |
+| `selector` | — | Required with `strategy: 'selector'` (throws without it). |
+| `timeout` | `30000` | Milliseconds before it throws. |
+
+Returns nothing; throws on timeout.
+
+```js
+await page.goto(TRAWL.url, { waitUntil: 'domcontentloaded' });
+await trawl.waitForHydration({ strategy: 'selector', selector: '.product-card', timeout: 45000 });
+const items = await page.$$eval('.product-card', (cards) => cards.map((c) => c.textContent.trim()));
+return returnData(items);
+```
 
 ## `captcha` — get a token for a captcha the script must submit
 

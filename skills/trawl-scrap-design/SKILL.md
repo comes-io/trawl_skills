@@ -172,6 +172,10 @@ Full detail in `references/anti-patterns.md`. Summary:
 
 Some pages hide data behind real UI interactions — scroll, hover, click, form fill. These are about **functional correctness**, not bot evasion. See `references/interaction-patterns.md` for patterns: lazy-load scroll, hover-to-reveal, click-to-expand, `page.type` form fill, state-transition waits, "next" pagination.
 
+## Script helpers (`fetch`, `cursor`, `captcha`)
+
+Besides `page` and `returnData`, a script on the worker can call `fetch` (a request from the script, outside the page: no page cookies), `cursor` (mouse moves along a path, for hover menus and controls that need a real pointer) and `captcha` (a token for a captcha inside a form the script submits). See `references/script-helpers.md` for each helper's arguments, return shape and an example, and the full list of globals a script can use.
+
 ## Canonical Trawl docs
 
 - *Trawl Scraping docs (in-app help center)* — selector basics, `returnData`, scrap lifecycle.

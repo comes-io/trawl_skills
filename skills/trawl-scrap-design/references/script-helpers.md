@@ -26,11 +26,12 @@ const withTimeout = (p, ms) => Promise.race([
 
 let urls = [];
 try {
-  const res = await withTimeout(fetch('https://example.com/sitemap.xml'), 20000);
-  if (res.ok) {
-    const xml = await res.text();
-    urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
-  }
+  // bound the headers AND the body read: a server can send headers, then stall
+  const xml = await withTimeout(
+    fetch('https://example.com/sitemap.xml').then((res) => (res.ok ? res.text() : '')),
+    20000,
+  );
+  urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
 } catch (err) {
   console.error('sitemap fetch failed:', err.message);
 }
@@ -80,7 +81,7 @@ Returns nothing; throws on timeout.
 ```js
 await page.goto(TRAWL.url, { waitUntil: 'domcontentloaded' });
 await trawl.waitForHydration({ strategy: 'selector', selector: '.product-card', timeout: 45000 });
-const items = await page.$$eval('.product-card', (cards) => cards.map((c) => c.textContent.trim()));
+const items = await page.$$eval('.product-card', (cards) => cards.map((c) => ({ title: c.textContent.trim() })));
 return returnData(items);
 ```
 
